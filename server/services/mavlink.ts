@@ -42,6 +42,16 @@ interface SysBatteryStatusPayload {
   battery_remaining: number;
 }
 
+interface AttitudePayload {
+  time_boot_ms: number;
+  roll: number;
+  pitch: number;
+  yaw: number;
+  rollspeed: number;
+  pitchspeed: number;
+  yawspeed: number;
+}
+
 interface GpsRawIntPayload {
   time_usec: number;
   fix_type: number;
@@ -257,6 +267,9 @@ class MAVLinkService extends EventEmitter {
         case 33: // GLOBAL_POSITION_INT
           await this.handleGlobalPositionInt(message);
           break;
+        case 30: // ATTITUDE
+          await this.handleAttitude(message);
+          break;
         case 147: // BATTERY_STATUS
           await this.handleBatteryStatus(message);
           break;
@@ -323,6 +336,25 @@ class MAVLinkService extends EventEmitter {
     });
 
     this.emit('batteryUpdate', { systemId, battery: payload });
+  }
+
+  private async handleAttitude(message: MAVLinkMessage) {
+    const payload: AttitudePayload = message.payload;
+    const systemId = message.system_id;
+    
+    // Convert radians to degrees
+    const rollDeg = (payload.roll * 180) / Math.PI;
+    const pitchDeg = (payload.pitch * 180) / Math.PI;
+    const yawDeg = (payload.yaw * 180) / Math.PI;
+    
+    await storage.updateDroneTelemetry(systemId, {
+      roll: rollDeg,
+      pitch: pitchDeg,
+      yaw: yawDeg,
+      lastTelemetry: new Date()
+    });
+
+    this.emit('attitudeUpdate', { systemId, attitude: payload });
   }
 
   private async handleGpsRawInt(message: MAVLinkMessage) {
@@ -606,6 +638,24 @@ class MAVLinkService extends EventEmitter {
         };
 
         await this.handleMAVLinkMessage(message);
+
+        // Simulate ATTITUDE message for AHRS display
+        const attitudeMessage: MAVLinkMessage = {
+          system_id: 1,
+          component_id: 1,
+          message_id: 30, // ATTITUDE
+          payload: {
+            time_boot_ms: Date.now(),
+            roll: (Math.random() - 0.5) * 0.4, // ±0.2 radians (~±11 degrees)
+            pitch: (Math.random() - 0.5) * 0.3, // ±0.15 radians (~±8 degrees)
+            yaw: Math.random() * 2 * Math.PI, // 0 to 2π radians (0-360 degrees)
+            rollspeed: (Math.random() - 0.5) * 0.1,
+            pitchspeed: (Math.random() - 0.5) * 0.1,
+            yawspeed: (Math.random() - 0.5) * 0.2
+          }
+        };
+
+        await this.handleMAVLinkMessage(attitudeMessage);
       }, 2000);
 
       // Simulate battery updates

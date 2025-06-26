@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import DroneControlPanel from "@/components/drone/control-panel";
 import FlightData from "@/components/drone/flight-data";
+import DroneFocusControl from "@/components/drone/drone-focus-control";
 import { AlertTriangle, Focus, Radio } from "lucide-react";
 
 export default function DroneControl() {
@@ -116,6 +117,9 @@ export default function DroneControl() {
           )}
         </div>
       </div>
+
+      {/* Comprehensive Focus Control Display */}
+      <DroneFocusControl />
 
       {/* Focus Selection */}
       {connectedDrones.length > 1 && (
