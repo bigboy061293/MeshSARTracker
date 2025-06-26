@@ -10,11 +10,60 @@ import DroneControlPanel from "@/components/drone/control-panel";
 import FlightData from "@/components/drone/flight-data";
 import DroneFocusControl from "@/components/drone/drone-focus-control";
 import { AlertTriangle, Focus, Radio } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function DroneControl() {
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
   const { drones, getConnectedDrones, getDroneById } = useDrone();
+
+  // Check MAVLink connection mutation
+  const checkConnectionMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/mavlink/status');
+    },
+    onSuccess: (data: any) => {
+      if (data.deviceConnected) {
+        toast({
+          title: "Connection Successful",
+          description: `Device connected via ${data.connectionString}. Last heartbeat: ${new Date(data.lastDeviceHeartbeat).toLocaleTimeString()}`,
+          variant: "default",
+        });
+      } else if (data.dataSource === 'simulation') {
+        toast({
+          title: "Simulation Mode",
+          description: "No real device connected - using simulated data",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "No Device Response",
+          description: `No heartbeat received from ${data.connectionString}. Check device power and connection.`,
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      
+      toast({
+        title: "Connection Check Failed",
+        description: error instanceof Error ? error.message : "Unable to check connection status",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -73,9 +122,14 @@ export default function DroneControl() {
             <p className="text-dark-muted mb-4">
               Connect a drone via MAVLink to access flight controls and telemetry
             </p>
-            <Button variant="outline" className="border-gray-600">
+            <Button 
+              variant="outline" 
+              className="border-gray-600"
+              onClick={() => checkConnectionMutation.mutate()}
+              disabled={checkConnectionMutation.isPending}
+            >
               <Radio className="h-4 w-4 mr-2" />
-              Check Connection
+              {checkConnectionMutation.isPending ? "Checking..." : "Check Connection"}
             </Button>
           </CardContent>
         </Card>
