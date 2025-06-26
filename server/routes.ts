@@ -195,6 +195,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Settings endpoints
+  app.get('/api/settings', isAuthenticated, async (req, res) => {
+    try {
+      const mavlinkSettings = await storage.getSettingsByCategory('mavlink');
+      const meshtasticSettings = await storage.getSettingsByCategory('meshtastic');
+      const mapSettings = await storage.getSettingsByCategory('map');
+      const notificationSettings = await storage.getSettingsByCategory('notifications');
+      const systemSettings = await storage.getSettingsByCategory('system');
+      
+      res.json({
+        mavlink: mavlinkSettings,
+        meshtastic: meshtasticSettings,
+        map: mapSettings,
+        notifications: notificationSettings,
+        system: systemSettings,
+      });
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.post('/api/settings', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.claims?.sub;
+      const settings = req.body;
+      
+      const savedSettings = [];
+      
+      for (const [key, value] of Object.entries(settings)) {
+        const category = key.startsWith('mavlink') ? 'mavlink' : 
+                        key.startsWith('meshtastic') ? 'meshtastic' :
+                        key.startsWith('map') ? 'map' :
+                        key.startsWith('notification') ? 'notifications' :
+                        'system';
+        
+        const setting = await storage.setSetting({
+          key,
+          value: String(value),
+          category,
+          updatedBy: userId,
+        });
+        savedSettings.push(setting);
+      }
+      
+      // If MAVLink connection string changed, reinitialize service
+      if (settings.mavlinkConnection) {
+        await mavlinkService.updateConnection(settings.mavlinkConnection);
+      }
+      
+      res.json({ message: "Settings saved successfully", settings: savedSettings });
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      res.status(500).json({ message: "Failed to save settings" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Setup WebSocket server

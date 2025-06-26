@@ -58,6 +58,7 @@ interface GpsRawIntPayload {
 class MAVLinkService extends EventEmitter {
   private connected = false;
   private connectionType: 'serial' | 'udp' | 'tcp' = 'udp';
+  private connectionString = 'udp:127.0.0.1:14550';
   private connection: any = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private telemetryInterval: NodeJS.Timeout | null = null;
@@ -69,6 +70,13 @@ class MAVLinkService extends EventEmitter {
   async initialize() {
     try {
       console.log('Initializing MAVLink service...');
+      
+      // Load connection string from settings
+      const { storage } = await import('../storage');
+      const connectionSetting = await storage.getSetting('mavlinkConnection');
+      if (connectionSetting) {
+        this.connectionString = connectionSetting.value;
+      }
       
       // In a real implementation, this would establish connection to drone
       // via serial, UDP, or TCP based on configuration
@@ -96,11 +104,44 @@ class MAVLinkService extends EventEmitter {
     // 2. Set up message parsing for MAVLink protocol
     // 3. Handle connection events
     
-    const connectionString = process.env.MAVLINK_CONNECTION || 'udp:127.0.0.1:14550';
-    console.log(`Connecting to drone via ${connectionString}`);
+    console.log(`Connecting to drone via ${this.connectionString}`);
+    
+    // Parse connection string to determine type
+    if (this.connectionString.startsWith('serial:') || this.connectionString.startsWith('COM')) {
+      this.connectionType = 'serial';
+    } else if (this.connectionString.startsWith('tcp:')) {
+      this.connectionType = 'tcp';
+    } else {
+      this.connectionType = 'udp';
+    }
     
     // Simulate connection establishment
-    this.connection = { connected: true };
+    this.connection = { connected: true, connectionString: this.connectionString };
+  }
+
+  async updateConnection(connectionString: string) {
+    try {
+      console.log(`Updating MAVLink connection to: ${connectionString}`);
+      
+      // Disconnect current connection
+      await this.disconnect();
+      
+      // Update connection string
+      this.connectionString = connectionString;
+      
+      // Reconnect with new settings
+      await this.establishConnection();
+      
+      this.connected = true;
+      this.startHeartbeat();
+      this.startTelemetryUpdates();
+      
+      console.log('MAVLink connection updated successfully');
+    } catch (error) {
+      console.error('Failed to update MAVLink connection:', error);
+      this.connected = false;
+      throw error;
+    }
   }
 
   async sendCommand(droneId: number, command: string, parameters?: any): Promise<any> {

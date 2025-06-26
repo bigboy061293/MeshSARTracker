@@ -5,6 +5,7 @@ import {
   drones,
   missions,
   sharedMaps,
+  settings,
   type User,
   type UpsertUser,
   type Node,
@@ -17,6 +18,8 @@ import {
   type InsertMission,
   type SharedMap,
   type InsertSharedMap,
+  type Setting,
+  type InsertSetting,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte } from "drizzle-orm";
@@ -53,6 +56,11 @@ export interface IStorage {
   getSharedMap(id: string): Promise<SharedMap | undefined>;
   createSharedMap(map: InsertSharedMap): Promise<SharedMap>;
   getPublicSharedMaps(): Promise<SharedMap[]>;
+
+  // Settings operations
+  getSetting(key: string): Promise<Setting | undefined>;
+  setSetting(setting: InsertSetting): Promise<Setting>;
+  getSettingsByCategory(category: string): Promise<Setting[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -233,6 +241,39 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(sharedMaps.createdAt));
+  }
+
+  // Settings operations
+  async getSetting(key: string): Promise<Setting | undefined> {
+    const [setting] = await db.select().from(settings).where(eq(settings.key, key));
+    return setting;
+  }
+
+  async setSetting(settingData: InsertSetting): Promise<Setting> {
+    const [setting] = await db
+      .insert(settings)
+      .values({
+        ...settingData,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: {
+          value: settingData.value,
+          updatedBy: settingData.updatedBy,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return setting;
+  }
+
+  async getSettingsByCategory(category: string): Promise<Setting[]> {
+    return await db
+      .select()
+      .from(settings)
+      .where(eq(settings.category, category))
+      .orderBy(settings.key);
   }
 }
 

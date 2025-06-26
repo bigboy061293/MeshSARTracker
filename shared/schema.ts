@@ -121,6 +121,17 @@ export const sharedMaps = pgTable("shared_maps", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// System Settings
+export const settings = pgTable("settings", {
+  id: serial("id").primaryKey(),
+  key: varchar("key").notNull().unique(),
+  value: text("value").notNull(),
+  category: varchar("category").notNull().default("general"),
+  description: text("description"),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   missions: many(missions),
@@ -209,3 +220,10 @@ export const insertSharedMapSchema = createInsertSchema(sharedMaps).omit({
 });
 export type InsertSharedMap = z.infer<typeof insertSharedMapSchema>;
 export type SharedMap = typeof sharedMaps.$inferSelect;
+
+export const insertSettingSchema = createInsertSchema(settings).omit({
+  id: true,
+  updatedAt: true,
+});
+export type InsertSetting = z.infer<typeof insertSettingSchema>;
+export type Setting = typeof settings.$inferSelect;

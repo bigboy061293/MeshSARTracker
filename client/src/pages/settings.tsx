@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,12 +84,58 @@ export default function Settings() {
     );
   }
 
+  // Load settings from backend
+  const { data: loadedSettings, isLoading: settingsLoading } = useQuery({
+    queryKey: ['/api/settings'],
+    enabled: isAuthenticated,
+  });
+
+  // Save settings mutation
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (settingsData: any) => {
+      return await apiRequest('/api/settings', 'POST', settingsData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings Saved",
+        description: "Your configuration has been saved successfully",
+      });
+    },
+    onError: (error) => {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update local settings when loaded from backend
+  useEffect(() => {
+    if (loadedSettings) {
+      const settingsMap: Record<string, any> = {};
+      
+      // Convert array of settings to object
+      ['mavlink', 'meshtastic', 'map', 'notifications', 'system'].forEach(category => {
+        const categorySettings = (loadedSettings as any)[category];
+        if (categorySettings && Array.isArray(categorySettings)) {
+          categorySettings.forEach((setting: any) => {
+            settingsMap[setting.key] = setting.value;
+          });
+        }
+      });
+
+      // Update state with loaded settings, keeping defaults for missing values
+      setSettings(prev => ({
+        ...prev,
+        ...settingsMap,
+      }));
+    }
+  }, [loadedSettings]);
+
   const handleSave = () => {
-    // In a real implementation, save settings to backend
-    toast({
-      title: "Settings Saved",
-      description: "Your preferences have been updated successfully",
-    });
+    saveSettingsMutation.mutate(settings);
   };
 
   const handleReset = () => {
@@ -98,7 +146,7 @@ export default function Settings() {
     });
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = (user as any)?.role === 'admin';
   const canEditSystem = isAdmin;
 
   return (
@@ -115,9 +163,22 @@ export default function Settings() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Reset
           </Button>
-          <Button onClick={handleSave} className="bg-primary hover:bg-primary/90">
-            <Save className="h-4 w-4 mr-2" />
-            Save Changes
+          <Button 
+            onClick={handleSave} 
+            disabled={saveSettingsMutation.isPending}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {saveSettingsMutation.isPending ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
           </Button>
         </div>
       </div>
