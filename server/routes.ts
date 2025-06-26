@@ -279,11 +279,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // If MAVLink connection string changed, reinitialize service
+      let connectionResult = null;
       if (settings.mavlinkConnection) {
-        await mavlinkService.updateConnection(settings.mavlinkConnection);
+        connectionResult = await mavlinkService.updateConnection(settings.mavlinkConnection);
       }
       
-      res.json({ message: "Settings saved successfully", settings: savedSettings });
+      res.json({ 
+        message: "Settings saved successfully", 
+        settings: savedSettings,
+        connectionResult 
+      });
     } catch (error) {
       console.error("Error saving settings:", error);
       res.status(500).json({ message: "Failed to save settings" });

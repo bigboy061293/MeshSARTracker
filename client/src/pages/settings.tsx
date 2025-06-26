@@ -95,17 +95,49 @@ export default function Settings() {
     mutationFn: async (settingsData: any) => {
       return await apiRequest('POST', '/api/settings', settingsData);
     },
-    onSuccess: () => {
-      toast({
-        title: "Settings Saved",
-        description: "Your configuration has been saved successfully",
-      });
+    onSuccess: (response: any) => {
+      const connectionResult = response?.connectionResult;
+      
+      if (connectionResult) {
+        // Show connection-specific feedback
+        if (connectionResult.success) {
+          toast({
+            title: "Connection Successful",
+            description: connectionResult.message || "MAVLink connection established successfully",
+          });
+        } else {
+          // Show detailed error message for connection failure
+          const errorDetails = connectionResult.details;
+          let description = connectionResult.message;
+          
+          // Add helpful suggestions based on error type
+          if (description.includes('timeout')) {
+            description += "\n\nSuggestions:\n• Check device is powered on and connected\n• Verify correct COM port or network address\n• Ensure MAVLink is enabled on autopilot";
+          } else if (description.includes('Port access failed')) {
+            description += "\n\nSuggestions:\n• Check cable connection\n• Verify correct COM port number\n• Try a different USB port";
+          } else if (description.includes('Invalid connection string')) {
+            description += "\n\nSuggestions:\n• Use format: COM4, /dev/ttyUSB0, or udp:127.0.0.1:14550\n• Check for typos in connection string";
+          }
+          
+          toast({
+            title: "Connection Failed",
+            description: description,
+            variant: "destructive",
+          });
+        }
+      } else {
+        // Standard success message for non-connection settings
+        toast({
+          title: "Settings Saved",
+          description: "Your configuration has been saved successfully",
+        });
+      }
     },
     onError: (error) => {
       console.error('Error saving settings:', error);
       toast({
-        title: "Error",
-        description: "Failed to save settings. Please try again.",
+        title: "Settings Save Failed",
+        description: "Failed to save settings. Please check your connection and try again.",
         variant: "destructive",
       });
     },

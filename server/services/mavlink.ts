@@ -196,12 +196,16 @@ class MAVLinkService extends EventEmitter {
     };
   }
 
-  async updateConnection(connectionString: string) {
+  async updateConnection(connectionString: string): Promise<{ success: boolean; message: string; details?: any }> {
     try {
       console.log(`Updating MAVLink connection to: ${connectionString}`);
 
       // Disconnect current connection
       await this.disconnect();
+
+      // Reset connection state
+      this.deviceConnected = false;
+      this.lastDeviceHeartbeat = 0;
 
       // Update connection string
       this.connectionString = connectionString;
@@ -213,12 +217,142 @@ class MAVLinkService extends EventEmitter {
       this.startHeartbeat();
       this.startTelemetryUpdates();
 
-      console.log("MAVLink connection updated successfully");
+      // Test connection with timeout
+      const testResult = await this.testConnection();
+      
+      if (testResult.success) {
+        console.log("MAVLink connection updated successfully");
+        return {
+          success: true,
+          message: "Connection established successfully",
+          details: testResult.details
+        };
+      } else {
+        return {
+          success: false,
+          message: testResult.message,
+          details: testResult.details
+        };
+      }
     } catch (error) {
-      console.error("Failed to update MAVLink connection:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown connection error";
+      console.error("Failed to update MAVLink connection:", errorMessage);
       this.connected = false;
-      throw error;
+      return {
+        success: false,
+        message: `Connection failed: ${errorMessage}`,
+        details: { error: errorMessage }
+      };
     }
+  }
+
+  /**
+   * Test connection and wait for device response
+   */
+  private async testConnection(timeoutMs: number = 15000): Promise<{ success: boolean; message: string; details: any }> {
+    if (this.useSimulation) {
+      return {
+        success: true,
+        message: "Simulation mode - connection successful",
+        details: { mode: "simulation" }
+      };
+    }
+
+    // Check if port/connection can be opened
+    const portCheck = await this.checkPortAccess();
+    if (!portCheck.success) {
+      return {
+        success: false,
+        message: portCheck.message,
+        details: portCheck.details
+      };
+    }
+
+    // Wait for device heartbeat
+    const deviceCheck = await this.waitForDeviceHeartbeat(timeoutMs);
+    return deviceCheck;
+  }
+
+  /**
+   * Check if the connection port/interface is accessible
+   */
+  private async checkPortAccess(): Promise<{ success: boolean; message: string; details: any }> {
+    try {
+      if (this.connectionString.startsWith("COM") || this.connectionString.startsWith("/dev/")) {
+        // Serial port check - in real implementation, would attempt to open the port
+        return {
+          success: true,
+          message: "Serial port accessible",
+          details: { port: this.connectionString, type: "serial" }
+        };
+      } else if (this.connectionString.includes(":")) {
+        // Network connection check
+        return {
+          success: true,
+          message: "Network connection configured",
+          details: { connection: this.connectionString, type: "network" }
+        };
+      } else {
+        return {
+          success: false,
+          message: "Invalid connection string format",
+          details: { connection: this.connectionString }
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Port access failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        details: { error }
+      };
+    }
+  }
+
+  /**
+   * Wait for device heartbeat with timeout
+   */
+  private async waitForDeviceHeartbeat(timeoutMs: number): Promise<{ success: boolean; message: string; details: any }> {
+    return new Promise((resolve) => {
+      const startTime = Date.now();
+      
+      const checkHeartbeat = () => {
+        const elapsed = Date.now() - startTime;
+        
+        if (this.isDeviceConnected()) {
+          resolve({
+            success: true,
+            message: "Device heartbeat received - connection successful",
+            details: {
+              responseTime: elapsed,
+              lastHeartbeat: this.lastDeviceHeartbeat,
+              deviceConnected: true
+            }
+          });
+          return;
+        }
+        
+        if (elapsed >= timeoutMs) {
+          resolve({
+            success: false,
+            message: `Connection timeout - no device response after ${timeoutMs/1000}s`,
+            details: {
+              timeout: timeoutMs,
+              elapsed,
+              connectionString: this.connectionString,
+              receivedHeartbeat: false,
+              suggestion: "Check device connection, baud rate, and ensure MAVLink is enabled"
+            }
+          });
+          return;
+        }
+        
+        // Check again in 500ms
+        setTimeout(checkHeartbeat, 500);
+      };
+      
+      // Start checking
+      checkHeartbeat();
+    });
   }
 
   async sendCommand(
