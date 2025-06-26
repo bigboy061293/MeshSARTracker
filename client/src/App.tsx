@@ -13,6 +13,7 @@ import MissionPlanning from "@/pages/mission-planning";
 import TeamManagement from "@/pages/team-management";
 import Settings from "@/pages/settings";
 import SharedMap from "@/pages/shared-map";
+import DroneFocus from "@/pages/drone-focus";
 import NotFound from "@/pages/not-found";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
