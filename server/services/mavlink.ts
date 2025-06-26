@@ -1,6 +1,12 @@
 import { EventEmitter } from "events";
+import { SerialPort } from "serialport";
+import { createConnection as createUdpConnection } from "net";
+import { createSocket } from "dgram";
 import { storage } from "../storage";
 import type { InsertDrone } from "@shared/schema";
+
+// Real MAVLink protocol integration
+import mavlink from "mavlink";
 
 interface MAVLinkMessage {
   system_id: number;
@@ -69,13 +75,14 @@ class MAVLinkService extends EventEmitter {
   private connected = false;
   private connectionType: "serial" | "udp" | "tcp" = "udp";
   private connectionString = "udp:127.0.0.1:14550";
-  private connection: any = null;
+  private connection: SerialPort | any = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private telemetryInterval: NodeJS.Timeout | null = null;
   private useSimulation: boolean = false; // true = simulation, false = real device
   private deviceConnected = false; // tracks if real device responded
   private lastDeviceHeartbeat = 0; // timestamp of last device heartbeat
   private connectionTimeout: NodeJS.Timeout | null = null;
+  private mavlinkParser: any = null; // MAVLink protocol parser
 
   constructor() {
     super();
