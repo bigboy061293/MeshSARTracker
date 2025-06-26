@@ -98,6 +98,7 @@ MeshTac is a full-stack web application designed for Search and Rescue (SAR) ope
 - June 26, 2025: Configured user roles - admin (vu.nguyen), user (user1), watcher (watcher1)
 - June 26, 2025: Implemented persistent settings storage with database schema for MAVLink configuration
 - June 26, 2025: Fixed MAVLink connection string saving issue - now supports COM4 and custom connection strings
+- June 26, 2025: Added comprehensive MAVLink message logging to console - displays all incoming and outgoing messages with timestamps and payload details
 
 ## User Preferences
 
