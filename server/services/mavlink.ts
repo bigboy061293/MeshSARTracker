@@ -73,6 +73,9 @@ class MAVLinkService extends EventEmitter {
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private telemetryInterval: NodeJS.Timeout | null = null;
   private useSimulation: boolean = false; // true = simulation, false = real device
+  private deviceConnected = false; // tracks if real device responded
+  private lastDeviceHeartbeat = 0; // timestamp of last device heartbeat
+  private connectionTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     super();
@@ -141,6 +144,29 @@ class MAVLinkService extends EventEmitter {
 
   isConnected(): boolean {
     return this.connected;
+  }
+
+  /**
+   * Check if a real device is actively responding
+   */
+  isDeviceConnected(): boolean {
+    if (this.useSimulation) return false;
+    const now = Date.now();
+    // Consider device connected if we received a heartbeat within last 10 seconds
+    return this.deviceConnected && (now - this.lastDeviceHeartbeat) < 10000;
+  }
+
+  /**
+   * Get connection status details
+   */
+  getConnectionStatus() {
+    return {
+      serviceConnected: this.connected,
+      deviceConnected: this.isDeviceConnected(),
+      dataSource: this.useSimulation ? 'simulation' : 'real_device',
+      connectionString: this.connectionString,
+      lastDeviceHeartbeat: this.lastDeviceHeartbeat
+    };
   }
 
   private async establishConnection() {
@@ -342,6 +368,18 @@ class MAVLinkService extends EventEmitter {
   private async handleHeartbeat(message: MAVLinkMessage) {
     const payload: HeartbeatPayload = message.payload;
     const systemId = message.system_id;
+
+    // Mark device as connected when we receive a heartbeat from external system
+    if (!this.useSimulation && systemId !== 255) { // 255 is typically GCS
+      const wasConnected = this.deviceConnected;
+      this.deviceConnected = true;
+      this.lastDeviceHeartbeat = Date.now();
+      
+      if (!wasConnected) {
+        console.log(`Real device connected! System ID: ${systemId}`);
+        console.log(`Device Details: ${this.getAutopilotName(payload.autopilot)} - ${this.getFlightModeName(payload.base_mode, payload.custom_mode)}`);
+      }
+    }
 
     // Ensure drone exists in database
     let drone = await storage.getDrone(systemId);

@@ -222,6 +222,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // MAVLink connection status endpoint
+  app.get('/api/mavlink/connection-status', isAuthenticated, async (req, res) => {
+    try {
+      const status = mavlinkService.getConnectionStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('Error getting MAVLink connection status:', error);
+      res.status(500).json({ message: 'Failed to get connection status' });
+    }
+  });
+
   // Settings endpoints
   app.get('/api/settings', isAuthenticated, async (req, res) => {
     try {
