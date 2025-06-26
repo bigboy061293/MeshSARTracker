@@ -358,11 +358,19 @@ class MAVLinkService extends EventEmitter {
     return modes[customMode as keyof typeof modes] || 'UNKNOWN';
   }
 
-  private startHeartbeat() {
+  private async startHeartbeat() {
+    // Load heartbeat interval from settings (default to 30 seconds to reduce log spam)
+    const { storage } = await import('../storage');
+    const heartbeatSetting = await storage.getSetting('mavlinkHeartbeat');
+    const heartbeatInterval = heartbeatSetting ? parseInt(heartbeatSetting.value) * 1000 : 30000;
+    
     this.heartbeatInterval = setInterval(() => {
       // In a real implementation, send heartbeat to maintain connection
-      console.log('Sending MAVLink heartbeat');
-    }, 1000);
+      // Only log every 10th heartbeat to reduce spam
+      if (Date.now() % (heartbeatInterval * 10) < heartbeatInterval) {
+        console.log('MAVLink heartbeat active');
+      }
+    }, heartbeatInterval);
   }
 
   private startTelemetryUpdates() {
