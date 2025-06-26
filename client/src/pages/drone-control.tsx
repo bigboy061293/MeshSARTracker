@@ -21,7 +21,7 @@ export default function DroneControl() {
   // Check MAVLink connection mutation
   const checkConnectionMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('GET', '/api/mavlink/status');
+      const response = await apiRequest('GET', '/api/mavlink/connection-status');
       return await response.json();
     },
     onSuccess: (data: any) => {
