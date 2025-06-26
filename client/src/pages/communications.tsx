@@ -59,7 +59,7 @@ export default function Communications() {
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2 text-sm">
             <div className="w-2 h-2 bg-secondary rounded-full animate-pulse"></div>
-            <span className="text-gray-300">Network Online</span>
+            <span className="text-dark-secondary">Network Online</span>
           </div>
         </div>
       </div>

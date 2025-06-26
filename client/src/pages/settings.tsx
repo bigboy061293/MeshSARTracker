@@ -126,11 +126,16 @@ export default function Settings() {
         }
       });
 
-      // Update state with loaded settings, keeping defaults for missing values
-      setSettings(prev => ({
-        ...prev,
-        ...settingsMap,
-      }));
+      // Update state with loaded settings, ensuring all values are defined
+      setSettings(prev => {
+        const newSettings = { ...prev };
+        Object.keys(settingsMap).forEach(key => {
+          if (settingsMap[key] !== undefined && settingsMap[key] !== null) {
+            (newSettings as any)[key] = settingsMap[key];
+          }
+        });
+        return newSettings;
+      });
     }
   }, [loadedSettings]);
 

@@ -60,8 +60,8 @@ export default function DroneControl() {
       <div className="p-6 space-y-6 bg-surface min-h-screen">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Focus Control</h1>
-            <p className="text-gray-400">UAV command and control interface</p>
+            <h1 className="text-2xl font-bold text-dark">Focus Control</h1>
+            <p className="text-dark-secondary">UAV command and control interface</p>
           </div>
         </div>
 
@@ -69,7 +69,7 @@ export default function DroneControl() {
           <CardContent className="p-8 text-center">
             <Focus className="h-16 w-16 text-gray-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Drones Connected</h3>
-            <p className="text-gray-400 mb-4">
+            <p className="text-dark-muted mb-4">
               Connect a drone via MAVLink to access flight controls and telemetry
             </p>
             <Button variant="outline" className="border-gray-600">
@@ -87,8 +87,8 @@ export default function DroneControl() {
       {/* Focus Control Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Focus Control</h1>
-          <p className="text-gray-400">UAV command and control interface</p>
+          <h1 className="text-2xl font-bold text-dark">Focus Control</h1>
+          <p className="text-dark-secondary">UAV command and control interface</p>
         </div>
         
         <div className="flex items-center space-x-4">
@@ -96,7 +96,7 @@ export default function DroneControl() {
             <div className={`w-2 h-2 rounded-full ${
               primaryDrone?.isConnected ? 'bg-secondary animate-pulse' : 'bg-error'
             }`} />
-            <span className="text-sm text-gray-300">
+            <span className="text-sm text-dark-secondary">
               {primaryDrone?.isConnected ? 'Connected' : 'Disconnected'}
             </span>
           </div>

@@ -78,7 +78,7 @@ html {
   body {
     @apply font-sans antialiased;
     background-color: var(--surface);
-    color: hsl(240, 10%, 3.9%);
+    color: var(--text-primary);
   }
 }
 
@@ -97,6 +97,43 @@ html {
 
 .text-primary {
   color: var(--tactical-primary);
+}
+
+/* Better text contrast utilities */
+.text-dark {
+  color: var(--text-primary) !important;
+}
+
+.text-dark-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.text-dark-muted {
+  color: var(--text-muted) !important;
+}
+
+.text-on-surface {
+  color: var(--text-on-surface) !important;
+}
+
+/* Override common text colors for better visibility */
+.text-white {
+  color: var(--text-primary) !important;
+}
+
+.text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+.text-gray-300 {
+  color: var(--text-secondary) !important;
+}
+
+/* Card and surface text improvements */
+.bg-surface .text-white,
+.bg-surface-variant .text-white,
+.card .text-white {
+  color: var(--text-on-card) !important;
 }
 
 .text-secondary {

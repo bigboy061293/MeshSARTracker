@@ -67,7 +67,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center min-h-screen bg-surface">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          <p className="mt-4 text-gray-400">Loading dashboard...</p>
+          <p className="mt-4 text-dark-secondary">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -104,7 +104,7 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Messages</p>
+                <p className="text-sm text-dark-muted">Messages</p>
                 <p className="text-3xl font-bold text-primary">
                   {/* Will be populated by WebSocket */}
                   --
@@ -125,7 +125,7 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Focus Status</p>
+                <p className="text-sm text-dark-muted">Focus Status</p>
                 <p className="text-3xl font-bold text-secondary">
                   {connectedDrones.length > 0 ? 'Ready' : 'N/A'}
                 </p>
@@ -133,7 +133,7 @@ export default function Dashboard() {
               <Focus className="h-8 w-8 text-secondary" />
             </div>
             <div className="mt-4">
-              <div className="flex items-center text-sm text-gray-400">
+              <div className="flex items-center text-sm text-dark-muted">
                 <span>{connectedDrones.length} connected</span>
               </div>
             </div>
@@ -144,7 +144,7 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Mission Time</p>
+                <p className="text-sm text-dark-muted">Mission Time</p>
                 <p className="text-3xl font-bold text-accent">
                   {/* Will show active mission time */}
                   --:--:--
