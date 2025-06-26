@@ -32,6 +32,14 @@
   --tactical-secondary: hsl(122, 43%, 38%);
   --tactical-accent: hsl(30, 100%, 40%);
   --tactical-error: hsl(0, 63%, 46%);
+  
+  /* Text Colors for Better Contrast */
+  --text-primary: hsl(0, 0%, 9%);
+  --text-secondary: hsl(0, 0%, 25%);
+  --text-muted: hsl(0, 0%, 40%);
+  --text-on-surface: hsl(0, 0%, 9%);
+  --text-on-primary: hsl(0, 0%, 98%);
+  --text-on-card: hsl(0, 0%, 9%);
 }
 
 .dark {
