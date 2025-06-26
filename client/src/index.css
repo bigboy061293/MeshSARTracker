@@ -24,14 +24,14 @@
   --ring: hsl(240, 10%, 3.9%);
   --radius: 0.5rem;
 
-  /* Tactical Theme Colors */
-  --surface: hsl(0, 0%, 7.1%);
-  --surface-variant: hsl(0, 0%, 11.8%);
-  --surface-light: hsl(0, 0%, 17.6%);
+  /* Bright Theme Colors */
+  --surface: hsl(0, 0%, 98%);
+  --surface-variant: hsl(0, 0%, 95%);
+  --surface-light: hsl(0, 0%, 92%);
   --tactical-primary: hsl(207, 90%, 54%);
   --tactical-secondary: hsl(122, 43%, 38%);
-  --tactical-accent: hsl(30, 100%, 50%);
-  --tactical-error: hsl(0, 63%, 56%);
+  --tactical-accent: hsl(30, 100%, 40%);
+  --tactical-error: hsl(0, 63%, 46%);
 }
 
 .dark {
@@ -57,9 +57,9 @@
   --radius: 0.5rem;
 }
 
-/* Apply dark theme by default for tactical interface */
+/* Apply bright theme by default */
 html {
-  @apply dark;
+  /* Using light theme by default */
 }
 
 @layer base {
@@ -70,7 +70,7 @@ html {
   body {
     @apply font-sans antialiased;
     background-color: var(--surface);
-    color: hsl(0, 0%, 98%);
+    color: hsl(240, 10%, 3.9%);
   }
 }
 
@@ -112,7 +112,7 @@ html {
   background-color: var(--surface-variant);
 }
 
-/* Custom scrollbar for tactical theme */
+/* Custom scrollbar for bright theme */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -127,5 +127,5 @@ html {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(240, 3.7%, 25%);
+  background: hsl(240, 5.9%, 75%);
 }
