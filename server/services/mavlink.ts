@@ -83,7 +83,7 @@ class MAVLinkService extends EventEmitter {
       await this.establishConnection();
       
       this.connected = true;
-      this.startHeartbeat();
+      await this.startHeartbeat();
       this.startTelemetryUpdates();
       this.simulateDroneData(); // For development/demo
       
