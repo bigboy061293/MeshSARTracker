@@ -93,7 +93,9 @@ MeshTac is a full-stack web application designed for Search and Rescue (SAR) ope
 - **OIDC Configuration**: Automated discovery with environment-specific URLs
 
 ## Changelog
-- June 26, 2025. Initial setup
+- June 26, 2025: Initial setup with role-based authentication system
+- June 26, 2025: Converted from dark to bright theme for better visibility
+- June 26, 2025: Configured user roles - admin (vu.nguyen), user (user1), watcher (watcher1)
 
 ## User Preferences
 
