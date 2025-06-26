@@ -195,6 +195,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // MAVLink configuration endpoints
+  app.get('/api/mavlink/data-source', isAuthenticated, async (req, res) => {
+    try {
+      const dataSource = mavlinkService.getDataSource();
+      res.json({ dataSource });
+    } catch (error) {
+      console.error('Error getting MAVLink data source:', error);
+      res.status(500).json({ message: 'Failed to get data source' });
+    }
+  });
+
+  app.post('/api/mavlink/data-source', isAuthenticated, async (req, res) => {
+    try {
+      const { useSimulation } = req.body;
+      
+      if (typeof useSimulation !== 'boolean') {
+        return res.status(400).json({ message: 'useSimulation must be a boolean' });
+      }
+      
+      mavlinkService.setDataSource(useSimulation);
+      res.json({ success: true, dataSource: mavlinkService.getDataSource() });
+    } catch (error) {
+      console.error('Error setting MAVLink data source:', error);
+      res.status(500).json({ message: 'Failed to set data source' });
+    }
+  });
+
   // Settings endpoints
   app.get('/api/settings', isAuthenticated, async (req, res) => {
     try {

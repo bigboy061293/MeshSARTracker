@@ -72,14 +72,33 @@ class MAVLinkService extends EventEmitter {
   private connection: any = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private telemetryInterval: NodeJS.Timeout | null = null;
+  private useSimulation: boolean = true; // true = simulation, false = real device
 
   constructor() {
     super();
+    // Read configuration from environment variable or default to simulation
+    this.useSimulation = process.env.MAVLINK_USE_SIMULATION !== 'false';
+  }
+
+  /**
+   * Configure the MAVLink data source
+   * @param useSimulation true for simulated data, false for real device data
+   */
+  setDataSource(useSimulation: boolean): void {
+    this.useSimulation = useSimulation;
+    console.log(`MAVLink data source set to: ${useSimulation ? 'Simulation' : 'Real Device'}`);
+  }
+
+  /**
+   * Get current data source configuration
+   */
+  getDataSource(): string {
+    return this.useSimulation ? 'Simulation' : 'Real Device';
   }
 
   async initialize() {
     try {
-      console.log('Initializing MAVLink service...');
+      console.log(`Initializing MAVLink service with data source: ${this.getDataSource()}`);
       
       // Load connection string from settings
       const { storage } = await import('../storage');
@@ -88,19 +107,29 @@ class MAVLinkService extends EventEmitter {
         this.connectionString = connectionSetting.value;
       }
       
-      // In a real implementation, this would establish connection to drone
-      // via serial, UDP, or TCP based on configuration
-      await this.establishConnection();
+      if (this.useSimulation) {
+        console.log('Using simulated MAVLink data for development/testing');
+        this.connected = true;
+        this.simulateDroneData();
+      } else {
+        console.log(`Connecting to real drone via ${this.connectionString}`);
+        await this.establishConnection();
+        this.connected = true;
+        this.startHeartbeat();
+      }
       
-      this.connected = true;
-      this.startHeartbeat();
       this.startTelemetryUpdates();
-      this.simulateDroneData(); // For development/demo
-      
-      console.log('MAVLink service initialized');
+      console.log('MAVLink service initialized successfully');
     } catch (error) {
       console.error('Failed to initialize MAVLink service:', error);
-      this.connected = false;
+      if (!this.useSimulation) {
+        console.log('Falling back to simulation mode due to connection failure');
+        this.useSimulation = true;
+        this.connected = true;
+        this.simulateDroneData();
+      } else {
+        this.connected = false;
+      }
     }
   }
 
@@ -608,8 +637,8 @@ class MAVLinkService extends EventEmitter {
   }
 
   private simulateDroneData() {
-    // This simulates real drone telemetry for development
-    if (process.env.NODE_ENV === 'development') {
+    // This simulates real drone telemetry when simulation mode is enabled
+    if (this.useSimulation) {
       let lat = 37.7749; // San Francisco
       let lon = -122.4194;
       let alt = 100;

@@ -99,6 +99,7 @@ MeshTac is a full-stack web application designed for Search and Rescue (SAR) ope
 - June 26, 2025: Implemented persistent settings storage with database schema for MAVLink configuration
 - June 26, 2025: Fixed MAVLink connection string saving issue - now supports COM4 and custom connection strings
 - June 26, 2025: Added comprehensive MAVLink message logging to console - displays all incoming and outgoing messages with timestamps and payload details
+- June 26, 2025: Implemented configurable MAVLink data source - users can now choose between simulated drone data and real MAVLink device connection via API endpoints or environment variables
 
 ## User Preferences
 
