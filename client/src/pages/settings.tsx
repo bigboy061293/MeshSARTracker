@@ -300,11 +300,12 @@ export default function Settings() {
                 placeholder="udp:127.0.0.1:14550"
               />
               <div className="mt-2 text-sm text-gray-400">
-                <p><strong>Cloud Deployment Options:</strong></p>
-                <p>• <code>udp:HOST:PORT</code> - Network UDP connection</p>
-                <p>• <code>tcp:HOST:PORT</code> - Network TCP connection</p>
-                <p>• Serial ports (COM4, /dev/ttyUSB0) only work with local hardware</p>
-                <p><strong>Examples:</strong> <code>udp:192.168.1.100:14550</code>, <code>tcp:drone.local:5760</code></p>
+                <p><strong>Development Bridge Mode:</strong></p>
+                <p>• Run <code>node com-bridge.js</code> on your local computer</p>
+                <p>• Connect to <code>udp:127.0.0.1:14550</code> to access real COM4 hardware</p>
+                <p>• This bridges local serial ports to cloud development environment</p>
+                <p><strong>Other Options:</strong> <code>udp:192.168.1.100:14550</code>, <code>tcp:drone.local:5760</code></p>
+                <p><strong>See:</strong> DEVELOPMENT_BRIDGE_GUIDE.md for complete setup instructions</p>
               </div>
             </div>
             
