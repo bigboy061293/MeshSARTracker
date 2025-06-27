@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNodes } from "@/hooks/useNodes";
 import { useDrone } from "@/hooks/useDrone";
@@ -12,6 +12,7 @@ import NodeStatus from "@/components/monitoring/node-status";
 import SignalChart from "@/components/monitoring/signal-chart";
 import MessagePanel from "@/components/communications/message-panel";
 import DroneControlPanel from "@/components/drone/control-panel";
+import QRDialog from "@/components/ui/qr-dialog";
 import { 
   Radio, 
   MessageSquare, 
@@ -28,6 +29,8 @@ export default function Dashboard() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const { nodes, getOnlineNodes } = useNodes();
   const { drones, getConnectedDrones } = useDrone();
+  
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
 
   const { data: status } = useQuery<SystemStatus>({
     queryKey: ['/api/status'],
@@ -61,6 +64,41 @@ export default function Dashboard() {
       return;
     }
   }, [isAuthenticated, isLoading, toast]);
+
+  const handleShareMap = () => {
+    console.log("Dashboard Share View button clicked!");
+    try {
+      const currentUrl = window.location.href;
+      setQrDialogOpen(true);
+      
+      navigator.clipboard.writeText(currentUrl).then(() => {
+        toast({
+          title: "Dashboard URL Copied",
+          description: "The dashboard link has been copied to your clipboard",
+        });
+      }).catch((error) => {
+        console.error("Clipboard error:", error);
+        toast({
+          title: "QR Code Generated",
+          description: "Scan the QR code to share this dashboard view",
+        });
+      });
+    } catch (error) {
+      console.error("Error in handleShareMap:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate share link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFullscreen = () => {
+    console.log("Dashboard Fullscreen button clicked!");
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -170,11 +208,11 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold">Tactical Map</CardTitle>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" className="border-gray-600">
+                  <Button variant="outline" size="sm" onClick={handleShareMap} className="border-gray-600">
                     <Share2 className="h-4 w-4 mr-1" />
                     Share View
                   </Button>
-                  <Button variant="outline" size="sm" className="border-gray-600">
+                  <Button variant="outline" size="sm" onClick={handleFullscreen} className="border-gray-600">
                     <Expand className="h-4 w-4 mr-1" />
                     Fullscreen
                   </Button>
@@ -263,6 +301,15 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* QR Code Share Dialog */}
+      <QRDialog
+        open={qrDialogOpen}
+        onOpenChange={setQrDialogOpen}
+        url={window.location.href}
+        title="Share Dashboard"
+        description="Scan the QR code or copy the link to share this dashboard view with your team"
+      />
     </div>
   );
 }
