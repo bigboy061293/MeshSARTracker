@@ -7,6 +7,15 @@ import { meshtasticService } from "./services/meshtastic";
 import { mavlinkService } from "./services/mavlink";
 import { insertNodeSchema, insertMessageSchema, insertDroneSchema, insertMissionSchema, insertSharedMapSchema } from "@shared/schema";
 
+// Helper function for formatting bytes
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
 // Role-based middleware
 const requireRole = (roles: string[]) => {
   return async (req: any, res: any, next: any) => {
@@ -312,13 +321,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Decode base64 data back to buffer
       const buffer = Buffer.from(data, 'base64');
       
-      console.log(`🌉 Bridge received ${buffer.length} bytes from local hardware`);
+      console.log(`🌉 Bridge received ${buffer.length} bytes from local hardware at ${new Date().toISOString()}`);
       
-      res.json({ status: 'ok', received: buffer.length });
+      // Store bridge activity for monitoring
+      if (!global.bridgeStats) {
+        global.bridgeStats = {
+          totalMessages: 0,
+          totalBytes: 0,
+          lastReceived: null,
+          isActive: false
+        };
+      }
+      
+      global.bridgeStats.totalMessages++;
+      global.bridgeStats.totalBytes += buffer.length;
+      global.bridgeStats.lastReceived = new Date();
+      global.bridgeStats.isActive = true;
+      
+      res.json({ 
+        status: 'ok', 
+        received: buffer.length,
+        timestamp: new Date().toISOString()
+      });
     } catch (error) {
       console.error('Bridge API error:', error);
       res.status(500).json({ error: 'Failed to process bridge data' });
     }
+  });
+
+  // Bridge status endpoint
+  app.get('/api/bridge/status', (req, res) => {
+    const stats = global.bridgeStats || {
+      totalMessages: 0,
+      totalBytes: 0,
+      lastReceived: null,
+      isActive: false
+    };
+    
+    // Check if bridge is active (received data in last 10 seconds)
+    const now = new Date();
+    const isActive = stats.lastReceived && 
+      (now.getTime() - stats.lastReceived.getTime()) < 10000;
+    
+    res.json({
+      ...stats,
+      isActive,
+      formattedBytes: formatBytes(stats.totalBytes),
+      secondsSinceLastMessage: stats.lastReceived ? 
+        Math.floor((now.getTime() - stats.lastReceived.getTime()) / 1000) : null
+    });
   });
 
   // Setup WebSocket server

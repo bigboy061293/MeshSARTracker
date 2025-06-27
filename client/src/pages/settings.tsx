@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { BridgeMonitor } from "@/components/bridge-monitor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -332,6 +333,9 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Bridge Monitor */}
+        <BridgeMonitor />
 
         {/* Map Settings */}
         <Card className="bg-surface-variant border-gray-700">
