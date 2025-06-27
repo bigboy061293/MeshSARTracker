@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNodes } from "@/hooks/useNodes";
 import { useDrone } from "@/hooks/useDrone";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import TacticalMap from "@/components/maps/tactical-map";
+import QRDialog from "@/components/ui/qr-dialog";
 import { 
   Share2, 
   Expand, 
@@ -22,6 +23,8 @@ export default function TacticalMapPage() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const { nodes, getOnlineNodes, getNodesWithGPS } = useNodes();
   const { drones, getConnectedDrones, getDronesWithGPS } = useDrone();
+  
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -55,10 +58,21 @@ export default function TacticalMapPage() {
   const dronesWithGPS = getDronesWithGPS();
 
   const handleShareMap = () => {
-    // In a real implementation, this would create a shareable map link
-    toast({
-      title: "Share Map",
-      description: "Shareable map link created (feature coming soon)",
+    // Generate current map URL with current state
+    const currentUrl = window.location.href;
+    setQrDialogOpen(true);
+    
+    // Also copy to clipboard immediately
+    navigator.clipboard.writeText(currentUrl).then(() => {
+      toast({
+        title: "Map URL Copied",
+        description: "The map link has been copied to your clipboard",
+      });
+    }).catch(() => {
+      toast({
+        title: "QR Code Generated",
+        description: "Scan the QR code to share this map view",
+      });
     });
   };
 
@@ -212,6 +226,15 @@ export default function TacticalMapPage() {
           </Card>
         </div>
       </div>
+
+      {/* QR Code Share Dialog */}
+      <QRDialog
+        open={qrDialogOpen}
+        onOpenChange={setQrDialogOpen}
+        url={window.location.href}
+        title="Share Tactical Map"
+        description="Scan the QR code or copy the link to share this tactical map view with your team"
+      />
     </div>
   );
 }
