@@ -1,8 +1,15 @@
-# Development Bridge Setup for Beginners
+# Cloud Bridge Setup for Beginners
 
 ## What You're Doing
 
-You have a drone connected to COM4 on your Windows computer, but you're developing in the cloud (Replit). The bridge forwards data from your local COM port to the cloud so you can test with real hardware.
+You have a drone connected to COM4 on your Windows computer, but you're developing in the cloud (Replit). The cloud bridge reads data from your local COM port and sends it to the cloud app via the internet, so you can test with real hardware.
+
+## How the Cloud Bridge Works
+
+**Your Computer (Local)** → **Internet** → **Replit (Cloud)**
+- `cloud-bridge.js` reads from COM4 on your computer
+- Sends data over internet to your Replit app URL
+- Cloud app receives real drone data as if connected directly
 
 ## Before You Start
 
@@ -53,44 +60,55 @@ node com-bridge.js --list
 
 This shows all available COM ports. You should see your drone's port listed.
 
-## Step 4: Start the Bridge
+## Step 4: Start the Cloud Bridge
 
-### Basic Bridge (COM4 to Cloud)
+### Get Your Replit URL
+1. In your Replit project, copy the URL from the address bar
+2. It looks like: `https://abc123-def456.replit.dev`
+
+### Start Cloud Bridge
 ```bash
-node com-bridge.js
+node cloud-bridge.js --url https://your-repl-url.replit.dev
 ```
+
+Replace `https://your-repl-url.replit.dev` with your actual Replit URL.
 
 ### Custom COM Port
 If your drone is on a different port:
 ```bash
-node com-bridge.js --port COM5
+node cloud-bridge.js --port COM5 --url https://your-repl-url.replit.dev
 ```
 
 ### What You Should See
 ```
-🌉 MeshTac COM Bridge Starting...
+☁️  MeshTac Cloud Bridge Starting...
 📡 Serial: COM4 @ 57600 baud
-🌐 UDP: 127.0.0.1:14550
+🌐 Cloud: https://your-repl.replit.dev
 
-✅ Bridge active - forwarding data from COM port to UDP
-💡 Cloud app should connect to: udp:127.0.0.1:14550
+🔍 Testing cloud connection...
+✅ Cloud connection successful
+🔌 Connecting to COM port...
+✅ Connected to COM4
+
+✅ Bridge active - forwarding data from COM port to cloud
+💡 Your cloud app will now receive real drone data
 ⌨️  Press Ctrl+C to stop
 
-📊 0:05 | 📡 RX: 1,234B | 🌐 TX: 1,234B | ❌ 0
+📊 2:30 | 📡 RX: 45,678B | ☁️  TX: 45,678B | ❌ 0
 ```
 
-## Step 5: Configure Cloud App
+## Step 5: Cloud App Configuration
 
-### In Replit (Cloud Environment)
-1. Go to the Settings page
-2. Find "MAVLink Configuration"
-3. Set Connection String to: `udp:127.0.0.1:14550`
-4. Click "Save Settings"
+### No Configuration Needed!
+The cloud bridge automatically sends data to your Replit app. The cloud app will:
+- Automatically receive your real drone data
+- Display it in the Drone Control page
+- Show live telemetry and GPS coordinates
 
-### Test the Connection
-1. Go to Drone Control page
-2. Click "Check Connection"
-3. You should see connection status change
+### Verify It's Working
+1. Open your Replit app in browser
+2. Go to Drone Control page
+3. You should see live data from your real drone
 
 ## Step 6: Verify Everything Works
 

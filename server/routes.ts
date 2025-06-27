@@ -297,6 +297,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   
+  // Bridge API endpoints for cloud connectivity
+  app.get('/api/bridge/test', (req, res) => {
+    res.json({ status: 'ok', message: 'Bridge connection successful' });
+  });
+
+  app.post('/api/bridge/mavlink', (req, res) => {
+    try {
+      const { data } = req.body;
+      if (!data) {
+        return res.status(400).json({ error: 'No data provided' });
+      }
+      
+      // Decode base64 data back to buffer
+      const buffer = Buffer.from(data, 'base64');
+      
+      console.log(`🌉 Bridge received ${buffer.length} bytes from local hardware`);
+      
+      res.json({ status: 'ok', received: buffer.length });
+    } catch (error) {
+      console.error('Bridge API error:', error);
+      res.status(500).json({ error: 'Failed to process bridge data' });
+    }
+  });
+
   // Setup WebSocket server
   setupWebSocket(httpServer);
   
