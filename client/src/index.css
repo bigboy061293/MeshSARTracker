@@ -57,6 +57,16 @@
   z-index: 10000 !important;
 }
 
+/* Prevent automatic scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent auto-focus scrolling */
+*:focus {
+  scroll-margin: 0;
+}
+
 .dark {
   --background: hsl(0, 0%, 7.1%);
   --foreground: hsl(0, 0%, 98%);
