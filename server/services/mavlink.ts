@@ -716,6 +716,11 @@ class MAVLinkService extends EventEmitter {
     const payload: HeartbeatPayload = message.payload;
     const systemId = message.system_id;
 
+    // Skip GCS heartbeats and only process when we have an active connection
+    if (systemId === 255 || !this.connected) {
+      return; // Ignore GCS heartbeats and disconnected state
+    }
+    
     // Mark device as connected when we receive a heartbeat from external system
     if (!this.useSimulation && systemId !== 255) { // 255 is typically GCS
       const wasConnected = this.deviceConnected;
@@ -723,34 +728,39 @@ class MAVLinkService extends EventEmitter {
       this.lastDeviceHeartbeat = Date.now();
       
       if (!wasConnected) {
-        console.log(`Real device connected! System ID: ${systemId}`);
-        console.log(`Device Details: ${this.getAutopilotName(payload.autopilot)} - ${this.getFlightModeName(payload.base_mode, payload.custom_mode)}`);
+        console.log(`🔗 Real device connected! System ID: ${systemId}`);
+        console.log(`📡 Device Details: ${this.getAutopilotName(payload.autopilot)} - ${this.getFlightModeName(payload.base_mode, payload.custom_mode)}`);
       }
     }
 
-    // Ensure drone exists in database
-    let drone = await storage.getDrone(systemId);
-    if (!drone) {
-      const newDroneData: InsertDrone = {
-        name: `UAV-${systemId.toString().padStart(2, "0")}`,
-        serialNumber: `SN${systemId}${Date.now()}`,
-        model: this.getAutopilotName(payload.autopilot),
+    // Only create/update drone records for real hardware connections or active simulation
+    if ((!this.useSimulation && this.deviceConnected) || (this.useSimulation && this.connected)) {
+      // Ensure drone exists in database
+      let drone = await storage.getDrone(systemId);
+      if (!drone) {
+        const newDroneData: InsertDrone = {
+          name: this.useSimulation ? `SIM-${systemId.toString().padStart(2, "0")}` : `UAV-${systemId.toString().padStart(2, "0")}`,
+          serialNumber: `${this.useSimulation ? 'SIM' : 'SN'}${systemId}${Date.now()}`,
+          model: this.useSimulation ? "Simulated" : this.getAutopilotName(payload.autopilot),
+          isConnected: true,
+        };
+        drone = await storage.upsertDrone(newDroneData);
+        console.log(`🆕 Created ${this.useSimulation ? 'simulated' : 'real'} drone record: ${drone.name} (System ID: ${systemId})`);
+      }
+
+      // Update drone status with current telemetry
+      await storage.updateDroneTelemetry(systemId, {
+        flightMode: this.getFlightModeName(
+          payload.base_mode,
+          payload.custom_mode,
+        ),
+        armed: (payload.base_mode & 128) !== 0, // MAV_MODE_FLAG_SAFETY_ARMED
         isConnected: true,
-      };
-      drone = await storage.upsertDrone(newDroneData);
+        lastTelemetry: new Date(),
+      });
+
+      this.emit("heartbeat", { systemId, payload });
     }
-
-    // Update drone status
-    await storage.updateDroneTelemetry(systemId, {
-      flightMode: this.getFlightModeName(
-        payload.base_mode,
-        payload.custom_mode,
-      ),
-      armed: (payload.base_mode & 128) !== 0, // MAV_MODE_FLAG_SAFETY_ARMED
-      isConnected: true,
-    });
-
-    this.emit("heartbeat", { systemId, payload });
   }
 
   private async handleGlobalPositionInt(message: MAVLinkMessage) {
@@ -1062,14 +1072,21 @@ class MAVLinkService extends EventEmitter {
         const now = new Date();
 
         // Mark drones as disconnected if no telemetry for 10 seconds
+        // Also ensure drones are only marked as connected if the MAVLink service is actually connected
         for (const drone of drones) {
-          if (
-            drone.lastTelemetry &&
-            now.getTime() - drone.lastTelemetry.getTime() > 10000
-          ) {
+          const shouldBeConnected = drone.lastTelemetry && 
+                                  (now.getTime() - drone.lastTelemetry.getTime() <= 10000) &&
+                                  this.connected &&
+                                  (this.useSimulation || this.deviceConnected);
+          
+          if (drone.isConnected !== shouldBeConnected) {
             await storage.updateDroneTelemetry(drone.id, {
-              isConnected: false,
+              isConnected: shouldBeConnected,
             });
+            
+            if (!shouldBeConnected) {
+              console.log(`🔌 Drone ${drone.name} marked as disconnected (${!this.connected ? 'MAVLink service offline' : 'no recent telemetry'})`);
+            }
           }
         }
       } catch (error) {
