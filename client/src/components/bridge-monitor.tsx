@@ -3,13 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { apiRequest } from '@/lib/queryClient';
 
-interface BridgeStats {
+interface BridgeData {
   totalMessages: number;
   totalBytes: number;
   lastReceived: string | null;
   isActive: boolean;
   formattedBytes: string;
   secondsSinceLastMessage: number | null;
+}
+
+interface BridgeStats {
+  mavlink: BridgeData;
+  meshtastic: BridgeData;
 }
 
 export function BridgeMonitor() {
@@ -39,15 +44,15 @@ export function BridgeMonitor() {
 
   const getStatusColor = () => {
     if (!stats) return 'secondary';
-    if (stats.isActive) return 'default';
-    if (stats.totalMessages > 0) return 'secondary';
+    if (stats.mavlink.isActive || stats.meshtastic.isActive) return 'default';
+    if (stats.mavlink.totalMessages > 0 || stats.meshtastic.totalMessages > 0) return 'secondary';
     return 'destructive';
   };
 
   const getStatusText = () => {
     if (!stats) return 'Loading...';
-    if (stats.isActive) return 'Active';
-    if (stats.totalMessages > 0) return 'Inactive';
+    if (stats.mavlink.isActive || stats.meshtastic.isActive) return 'Active';
+    if (stats.mavlink.totalMessages > 0 || stats.meshtastic.totalMessages > 0) return 'Inactive';
     return 'No Data';
   };
 
@@ -56,9 +61,9 @@ export function BridgeMonitor() {
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg">Bridge Connection</CardTitle>
+            <CardTitle className="text-lg">Bridge Connections</CardTitle>
             <CardDescription>
-              Real-time status of local COM4 → Cloud bridge
+              Real-time status of drone and Meshtastic bridges
             </CardDescription>
           </div>
           <Badge variant={getStatusColor()}>
@@ -73,67 +78,91 @@ export function BridgeMonitor() {
           </div>
         ) : stats ? (
           <>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <div className="text-sm font-medium">Messages Received</div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {stats.totalMessages.toLocaleString()}
+            {/* MAVLink Bridge Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900">MAVLink Bridge (Drone Data)</h4>
+                <Badge variant={stats.mavlink.isActive ? 'default' : stats.mavlink.totalMessages > 0 ? 'secondary' : 'destructive'}>
+                  {stats.mavlink.isActive ? 'Active' : stats.mavlink.totalMessages > 0 ? 'Inactive' : 'No Data'}
+                </Badge>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">Messages</div>
+                  <div className="text-xl font-bold text-blue-600">
+                    {stats.mavlink.totalMessages.toLocaleString()}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">Data</div>
+                  <div className="text-xl font-bold text-green-600">
+                    {stats.mavlink.formattedBytes}
+                  </div>
                 </div>
               </div>
-              <div className="space-y-1">
-                <div className="text-sm font-medium">Data Transferred</div>
-                <div className="text-2xl font-bold text-green-600">
-                  {stats.formattedBytes}
+              
+              {stats.mavlink.isActive && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm text-green-800">Receiving drone telemetry</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-            
-            <div className="pt-2 border-t">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Last Message:</span>
-                <span className="font-medium">
-                  {stats.lastReceived ? (
-                    stats.secondsSinceLastMessage !== null && stats.secondsSinceLastMessage < 60 ? (
-                      `${stats.secondsSinceLastMessage}s ago`
-                    ) : stats.lastReceived ? (
-                      new Date(stats.lastReceived).toLocaleTimeString()
-                    ) : (
-                      'Never'
-                    )
-                  ) : (
-                    'Never'
-                  )}
-                </span>
+
+            <div className="border-t my-4"></div>
+
+            {/* Meshtastic Bridge Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900">Meshtastic Bridge (Node Data)</h4>
+                <Badge variant={stats.meshtastic.isActive ? 'default' : stats.meshtastic.totalMessages > 0 ? 'secondary' : 'destructive'}>
+                  {stats.meshtastic.isActive ? 'Active' : stats.meshtastic.totalMessages > 0 ? 'Inactive' : 'No Data'}
+                </Badge>
               </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">Messages</div>
+                  <div className="text-xl font-bold text-blue-600">
+                    {stats.meshtastic.totalMessages.toLocaleString()}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">Data</div>
+                  <div className="text-xl font-bold text-green-600">
+                    {stats.meshtastic.formattedBytes}
+                  </div>
+                </div>
+              </div>
+              
+              {stats.meshtastic.isActive && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm text-green-800">Receiving node data</span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {stats.isActive && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm text-green-800 font-medium">
-                    Receiving live data from local hardware
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {!stats.isActive && stats.totalMessages > 0 && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <div className="text-sm text-yellow-800">
-                  Bridge was active but no recent data. Check your local bridge connection.
-                </div>
-              </div>
-            )}
-
-            {stats.totalMessages === 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            {/* Instructions when no data */}
+            {stats.mavlink.totalMessages === 0 && stats.meshtastic.totalMessages === 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
                 <div className="text-sm text-blue-800">
-                  <div className="font-medium mb-1">Waiting for bridge connection</div>
-                  <div>Start the cloud bridge on your local computer:</div>
-                  <code className="text-xs bg-blue-100 px-1 py-0.5 rounded mt-1 block">
-                    node cloud-bridge.js --url {window.location.origin}
-                  </code>
+                  <div className="font-medium mb-2">Waiting for bridge connections</div>
+                  <div className="space-y-1">
+                    <div>For drone data:</div>
+                    <code className="text-xs bg-blue-100 px-1 py-0.5 rounded block">
+                      node cloud-bridge.js --url {window.location.origin}
+                    </code>
+                    <div className="mt-2">For Meshtastic nodes:</div>
+                    <code className="text-xs bg-blue-100 px-1 py-0.5 rounded block">
+                      node meshtastic-bridge.js --url {window.location.origin}
+                    </code>
+                  </div>
                 </div>
               </div>
             )}

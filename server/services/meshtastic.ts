@@ -214,37 +214,8 @@ class MeshtasticService extends EventEmitter {
   }
 
   private simulateIncomingData() {
-    // This simulates real Meshtastic data for development
-    if (process.env.NODE_ENV === 'development') {
-      setInterval(() => {
-        const nodeIds = ['!33a8b7f0', '!44b9c8e1', '!55cad9f2'];
-        const randomNode = nodeIds[Math.floor(Math.random() * nodeIds.length)];
-        
-        const packet: MeshtasticPacket = {
-          from: randomNode,
-          to: 'BROADCAST',
-          id: Math.floor(Math.random() * 1000000),
-          rxTime: new Date(),
-          rxSnr: Math.random() * 10 - 5,
-          rxRssi: Math.floor(Math.random() * 40) - 100,
-          hopLimit: 3,
-          channel: 0,
-          decoded: {
-            portnum: 'TELEMETRY_APP',
-            payload: {
-              deviceMetrics: {
-                batteryLevel: Math.floor(Math.random() * 100),
-                voltage: 3.0 + Math.random() * 1.2,
-                channelUtilization: Math.random() * 25,
-                airUtilTx: Math.random() * 10,
-              }
-            }
-          }
-        };
-
-        this.handleIncomingPacket(packet);
-      }, 5000 + Math.random() * 10000); // Random interval between 5-15 seconds
-    }
+    // Simulation disabled - only process real Meshtastic data from bridge
+    console.log("📡 Meshtastic simulation disabled - waiting for bridge data");
   }
 
   /**
