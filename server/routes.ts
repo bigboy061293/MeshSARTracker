@@ -360,9 +360,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Meshtastic bridge endpoint
   app.post('/api/bridge/meshtastic', async (req, res) => {
     try {
-      const buffer = req.body as Buffer;
-      console.log(`📡 Meshtastic bridge received ${buffer.length} bytes from local hardware at ${new Date().toISOString()}`);
-      
       // Store bridge activity for monitoring
       if (!global.meshtasticBridgeStats) {
         global.meshtasticBridgeStats = {
@@ -374,20 +371,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       global.meshtasticBridgeStats.totalMessages++;
-      global.meshtasticBridgeStats.totalBytes += buffer.length;
       global.meshtasticBridgeStats.lastReceived = new Date();
       global.meshtasticBridgeStats.isActive = true;
       
-      // Process Meshtastic data through the service
-      try {
-        await meshtasticService.processBridgeData(buffer);
-      } catch (error) {
-        console.error('Failed to process Meshtastic bridge data:', error);
+      let rawData;
+      let parsedData = null;
+      
+      // Handle enhanced bridge data format
+      if (req.headers['x-bridge-type'] === 'meshtastic-enhanced' && req.body.raw && req.body.parsed) {
+        rawData = Buffer.from(req.body.raw.data || req.body.raw);
+        parsedData = req.body.parsed;
+        global.meshtasticBridgeStats.totalBytes += rawData.length;
+        
+        console.log(`📡 Enhanced Meshtastic data: ${parsedData?.type} from ${parsedData?.from} (${rawData.length} bytes)`);
+        
+        // Process enhanced parsed data
+        if (parsedData) {
+          await meshtasticService.processEnhancedBridgeData(rawData, parsedData);
+        }
+      } else {
+        // Handle legacy raw data format
+        rawData = req.body as Buffer;
+        global.meshtasticBridgeStats.totalBytes += rawData.length;
+        console.log(`📡 Raw Meshtastic data: ${rawData.length} bytes from local hardware`);
+        
+        await meshtasticService.processBridgeData(rawData);
       }
       
       res.json({ 
         status: 'ok', 
-        received: buffer.length, 
+        received: rawData.length, 
+        parsed: !!parsedData,
         timestamp: new Date().toISOString() 
       });
     } catch (error) {

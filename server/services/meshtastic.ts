@@ -219,6 +219,148 @@ class MeshtasticService extends EventEmitter {
   }
 
   /**
+   * Process enhanced Meshtastic data received from the cloud bridge
+   * @param buffer Raw Meshtastic data buffer from the bridge
+   * @param parsedData Parsed packet data from the bridge
+   */
+  async processEnhancedBridgeData(buffer: Buffer, parsedData: any) {
+    if (!buffer || buffer.length === 0) return;
+
+    try {
+      console.log(`🔄 Processing enhanced Meshtastic data: ${parsedData.type} from ${parsedData.from}`);
+
+      // Process different packet types with enhanced data
+      if (parsedData.type === 'NODEINFO_APP' && parsedData.nodeInfo) {
+        await this.handleEnhancedNodeInfo(parsedData);
+      } else if (parsedData.type === 'POSITION_APP' && parsedData.position) {
+        await this.handleEnhancedPosition(parsedData);
+      } else if (parsedData.type === 'TELEMETRY_APP' && parsedData.telemetry) {
+        await this.handleEnhancedTelemetry(parsedData);
+      } else if (parsedData.type === 'TEXT_MESSAGE_APP' && parsedData.text) {
+        await this.handleEnhancedTextMessage(parsedData);
+      } else {
+        // Fallback to basic processing
+        await this.handleBasicPacket(parsedData);
+      }
+
+      // Always update node with latest signal information
+      if (parsedData.from) {
+        await this.updateNodeSignalData(parsedData);
+      }
+
+    } catch (error) {
+      console.error('Error processing enhanced Meshtastic bridge data:', error);
+      // Fallback to raw processing
+      await this.processBridgeData(buffer);
+    }
+  }
+
+  private async handleEnhancedNodeInfo(parsedData: any) {
+    const nodeData: InsertNode = {
+      nodeId: parsedData.from,
+      name: parsedData.nodeInfo.longName || `Node-${parsedData.from.slice(-4)}`,
+      shortName: parsedData.nodeInfo.shortName || parsedData.from.slice(-4),
+      hwModel: parsedData.nodeInfo.hwModel || 'Unknown',
+      rssi: parsedData.rxRssi || -100,
+      snr: parsedData.rxSnr || 0,
+      lastSeen: new Date(),
+      isOnline: true
+    };
+
+    await storage.upsertNode(nodeData);
+    console.log(`📱 Enhanced Node Info: ${nodeData.name} (${nodeData.hwModel})`);
+  }
+
+  private async handleEnhancedPosition(parsedData: any) {
+    const nodeData: InsertNode = {
+      nodeId: parsedData.from,
+      name: `Node-${parsedData.from.slice(-4)}`,
+      latitude: parsedData.position.latitude,
+      longitude: parsedData.position.longitude,
+      altitude: parsedData.position.altitude,
+      rssi: parsedData.rxRssi || -100,
+      snr: parsedData.rxSnr || 0,
+      lastSeen: new Date(),
+      isOnline: true
+    };
+
+    await storage.upsertNode(nodeData);
+    console.log(`📍 Enhanced Position: ${parsedData.from} at ${parsedData.position.latitude.toFixed(6)}, ${parsedData.position.longitude.toFixed(6)}`);
+  }
+
+  private async handleEnhancedTelemetry(parsedData: any) {
+    const nodeData: InsertNode = {
+      nodeId: parsedData.from,
+      name: `Node-${parsedData.from.slice(-4)}`,
+      batteryLevel: parsedData.telemetry.batteryLevel,
+      voltage: parsedData.telemetry.voltage,
+      rssi: parsedData.rxRssi || -100,
+      snr: parsedData.rxSnr || 0,
+      lastSeen: new Date(),
+      isOnline: true
+    };
+
+    await storage.upsertNode(nodeData);
+    console.log(`🔋 Enhanced Telemetry: ${parsedData.from} - ${parsedData.telemetry.batteryLevel}% battery, ${parsedData.telemetry.voltage}V`);
+  }
+
+  private async handleEnhancedTextMessage(parsedData: any) {
+    const messageData: InsertMessage = {
+      fromNodeId: parsedData.from,
+      toNodeId: parsedData.to === 'BROADCAST' ? null : parsedData.to,
+      content: parsedData.text,
+      messageType: 'text',
+      isRead: false,
+      timestamp: new Date(parsedData.timestamp)
+    };
+
+    await storage.insertMessage(messageData);
+    console.log(`💬 Enhanced Text Message: ${parsedData.from} -> ${parsedData.to}: "${parsedData.text}"`);
+
+    // Also update the sender node
+    await this.updateNodeSignalData(parsedData);
+  }
+
+  private async handleBasicPacket(parsedData: any) {
+    // Handle unknown packet types by updating basic node info
+    if (parsedData.from) {
+      const nodeData: InsertNode = {
+        nodeId: parsedData.from,
+        name: `Node-${parsedData.from.slice(-4)}`,
+        rssi: parsedData.rxRssi || -100,
+        snr: parsedData.rxSnr || 0,
+        lastSeen: new Date(),
+        isOnline: true
+      };
+
+      await storage.upsertNode(nodeData);
+      console.log(`📦 Enhanced Basic Packet: ${parsedData.from} (${parsedData.type})`);
+    }
+  }
+
+  private async updateNodeSignalData(parsedData: any) {
+    if (!parsedData.from) return;
+
+    try {
+      const existingNode = await storage.getNode(parsedData.from);
+      if (existingNode) {
+        const nodeData: InsertNode = {
+          nodeId: parsedData.from,
+          name: existingNode.name,
+          rssi: parsedData.rxRssi || existingNode.rssi,
+          snr: parsedData.rxSnr || existingNode.snr,
+          lastSeen: new Date(),
+          isOnline: true
+        };
+
+        await storage.upsertNode(nodeData);
+      }
+    } catch (error) {
+      console.error('Error updating node signal data:', error);
+    }
+  }
+
+  /**
    * Process raw Meshtastic data received from the cloud bridge
    * @param buffer Raw Meshtastic data buffer from the bridge
    */
