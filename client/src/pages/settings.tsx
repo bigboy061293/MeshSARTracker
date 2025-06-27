@@ -299,6 +299,13 @@ export default function Settings() {
                 disabled={!canEditSystem}
                 placeholder="udp:127.0.0.1:14550"
               />
+              <div className="mt-2 text-sm text-gray-400">
+                <p><strong>Cloud Deployment Options:</strong></p>
+                <p>• <code>udp:HOST:PORT</code> - Network UDP connection</p>
+                <p>• <code>tcp:HOST:PORT</code> - Network TCP connection</p>
+                <p>• Serial ports (COM4, /dev/ttyUSB0) only work with local hardware</p>
+                <p><strong>Examples:</strong> <code>udp:192.168.1.100:14550</code>, <code>tcp:drone.local:5760</code></p>
+              </div>
             </div>
             
             <div>

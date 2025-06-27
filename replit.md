@@ -103,6 +103,7 @@ MeshTac is a full-stack web application designed for Search and Rescue (SAR) ope
 - June 26, 2025: Updated MAVLink service to default to real device data on startup - system now attempts to connect to actual drone hardware first, with automatic fallback to simulation if connection fails
 - June 26, 2025: Integrated real MAVLink libraries - installed `mavlink` and `serialport` packages to replace custom simulation with actual MAVLink protocol communication for genuine drone hardware compatibility
 - June 27, 2025: Successfully implemented COM4 serial port connection - system now properly connects to real drone hardware on COM4 with 57600 baud rate, receiving live telemetry data including GPS position, attitude, and battery status
+- June 27, 2025: Implemented cloud deployment compatibility - added network-based MAVLink connections (UDP/TCP) for cloud environments where serial ports are unavailable, created comprehensive deployment guide with connection options and troubleshooting
 
 ## User Preferences
 

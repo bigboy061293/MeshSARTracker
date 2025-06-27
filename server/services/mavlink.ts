@@ -210,7 +210,30 @@ class MAVLinkService extends EventEmitter {
         portPath = portPath.substring(7); // Remove "serial:" prefix
       }
 
-      console.log(`📡 Opening serial port: ${portPath}`);
+      console.log(`📡 Attempting to open serial port: ${portPath}`);
+
+      // Check if we're in a cloud environment where serial ports may not be available
+      const isCloudEnvironment = process.env.REPLIT || process.env.NODE_ENV === 'development';
+      
+      if (isCloudEnvironment && (portPath.startsWith('COM') || portPath.startsWith('/dev/tty'))) {
+        throw new Error(`Cloud environment detected - serial port ${portPath} not available. Use network connections instead (udp:host:port or tcp:host:port)`);
+      }
+
+      // List available serial ports for debugging
+      const { SerialPort } = await import('serialport');
+      const availablePorts = await SerialPort.list();
+      console.log(`Available serial ports:`, availablePorts.map(p => p.path));
+
+      if (availablePorts.length === 0) {
+        throw new Error(`No serial ports available on this system. For cloud deployment, use network connections: udp:127.0.0.1:14550`);
+      }
+
+      // Check if the requested port exists
+      const portExists = availablePorts.some(p => p.path === portPath);
+      if (!portExists) {
+        const availablePortsList = availablePorts.map(p => p.path).join(', ');
+        throw new Error(`Serial port ${portPath} not found. Available ports: ${availablePortsList}`);
+      }
 
       // Create SerialPort connection with MAVLink-compatible settings
       this.connection = new SerialPort({
