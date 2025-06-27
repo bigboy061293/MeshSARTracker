@@ -361,16 +361,16 @@ export default function DroneControl() {
                     {[-30, -20, -10, 10, 20, 30].map(angle => (
                       <div
                         key={angle}
-                        className="absolute left-1/4 right-1/4 h-0.5 bg-white opacity-80"
+                        className="absolute left-1/4 right-1/4 h-1 bg-white shadow-lg"
                         style={{
                           top: `calc(50% + ${angle * 3}px)`,
-                          transform: 'translateY(-1px)'
+                          transform: 'translateY(-2px)'
                         }}
                       >
-                        <span className="absolute -left-8 -top-2 text-white text-xs font-semibold">
+                        <span className="absolute -left-12 -top-3 text-white text-sm font-bold drop-shadow-lg bg-black bg-opacity-50 px-1 rounded">
                           {Math.abs(angle)}
                         </span>
-                        <span className="absolute -right-8 -top-2 text-white text-xs font-semibold">
+                        <span className="absolute -right-12 -top-3 text-white text-sm font-bold drop-shadow-lg bg-black bg-opacity-50 px-1 rounded">
                           {Math.abs(angle)}
                         </span>
                       </div>
@@ -389,7 +389,7 @@ export default function DroneControl() {
                   </div>
                   
                   {/* Heading Tape (Top) */}
-                  <div className="absolute top-0 left-0 right-0 h-12 bg-black bg-opacity-50">
+                  <div className="absolute top-0 left-0 right-0 h-16 bg-black bg-opacity-75">
                     <div className="relative w-full h-full overflow-hidden">
                       <div 
                         className="absolute top-0 h-full flex items-center transition-transform duration-300"
@@ -398,65 +398,77 @@ export default function DroneControl() {
                         }}
                       >
                         {Array.from({ length: 36 }, (_, i) => i * 10).map(heading => (
-                          <div key={heading} className="relative flex-shrink-0 w-8 h-full flex flex-col items-center justify-center">
-                            <div className="text-white text-xs font-mono">
+                          <div key={heading} className="relative flex-shrink-0 w-12 h-full flex flex-col items-center justify-center">
+                            <div className="text-white text-sm font-bold font-mono drop-shadow-lg">
                               {heading === 0 ? 'N' : heading === 90 ? 'E' : heading === 180 ? 'S' : heading === 270 ? 'W' : heading.toString().padStart(3, '0')}
                             </div>
-                            <div className="w-0.5 h-3 bg-white" />
+                            <div className="w-0.5 h-4 bg-white" />
                           </div>
                         ))}
                       </div>
                       {/* Heading Bug */}
-                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-yellow-400" />
-                      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-yellow-400 text-xs font-mono px-1 rounded">
+                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent border-t-yellow-400" />
+                      <div className="absolute top-10 left-1/2 transform -translate-x-1/2 bg-black text-yellow-400 text-lg font-bold font-mono px-2 py-1 rounded border-2 border-yellow-400">
                         {Math.round(selectedDrone.heading || 0).toString().padStart(3, '0')}°
                       </div>
                     </div>
                   </div>
                   
                   {/* Altitude Tape (Right) */}
-                  <div className="absolute top-0 right-0 w-16 bottom-0 bg-black bg-opacity-50">
+                  <div className="absolute top-0 right-0 w-20 bottom-0 bg-black bg-opacity-75">
                     <div className="relative w-full h-full overflow-hidden">
-                      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-75 text-green-400 text-xs font-mono px-1 rounded">
+                      <div className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black text-green-400 text-base font-bold font-mono px-2 py-1 rounded border-2 border-green-400">
                         {Math.round((selectedDrone.relativeAltitude || 0) / 1000)}m
                       </div>
-                      <div className="absolute right-0 top-1/2 w-3 h-0.5 bg-white" />
+                      <div className="absolute right-0 top-1/2 w-4 h-1 bg-white" />
+                      <div className="absolute right-1 top-1/3 text-green-300 text-xs font-mono">ALT</div>
+                      <div className="absolute right-1 bottom-1/3 text-green-300 text-xs font-mono">AGL</div>
                     </div>
                   </div>
                   
                   {/* Speed Tape (Left) */}
-                  <div className="absolute top-0 left-0 w-16 bottom-0 bg-black bg-opacity-50">
+                  <div className="absolute top-0 left-0 w-20 bottom-0 bg-black bg-opacity-75">
                     <div className="relative w-full h-full overflow-hidden">
-                      <div className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-75 text-green-400 text-xs font-mono px-1 rounded">
-                        {Math.round(Math.sqrt(Math.pow((selectedDrone.velocityX || 0) / 100, 2) + Math.pow((selectedDrone.velocityY || 0) / 100, 2)))}m/s
+                      <div className="absolute left-1 top-1/2 transform -translate-y-1/2 bg-black text-green-400 text-base font-bold font-mono px-2 py-1 rounded border-2 border-green-400">
+                        {Math.round(Math.sqrt(Math.pow((selectedDrone.velocityX || 0) / 100, 2) + Math.pow((selectedDrone.velocityY || 0) / 100, 2)))}
                       </div>
-                      <div className="absolute left-0 top-1/2 w-3 h-0.5 bg-white" />
+                      <div className="absolute left-0 top-1/2 w-4 h-1 bg-white" />
+                      <div className="absolute left-1 top-1/3 text-green-300 text-xs font-mono">SPD</div>
+                      <div className="absolute left-1 bottom-1/3 text-green-300 text-xs font-mono">m/s</div>
                     </div>
                   </div>
                   
                   {/* Status Information */}
-                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-black bg-opacity-50 p-2">
-                    <div className="grid grid-cols-3 gap-4 h-full text-white text-xs">
+                  <div className="absolute bottom-0 left-0 right-0 h-20 bg-black bg-opacity-90 p-3">
+                    <div className="grid grid-cols-3 gap-6 h-full text-white">
                       {/* Left Column */}
-                      <div className="space-y-1">
-                        <div>GPS: {selectedDrone.latitude && selectedDrone.longitude ? '3D Fix' : 'No Fix'}</div>
-                        <div>Sat: {selectedDrone.satelliteCount || 0}</div>
+                      <div className="space-y-2">
+                        <div className="text-sm font-bold text-cyan-400">
+                          GPS: {selectedDrone.latitude && selectedDrone.longitude ? '3D Fix' : 'No Fix'}
+                        </div>
+                        <div className="text-sm font-bold text-cyan-300">
+                          Satellites: {selectedDrone.satelliteCount || 0}
+                        </div>
                       </div>
                       
                       {/* Center Column */}
                       <div className="text-center space-y-1">
-                        <div className="text-lg font-bold text-red-400">
+                        <div className="text-2xl font-bold text-red-400 drop-shadow-lg">
                           {selectedDrone.armed ? 'ARMED' : 'DISARMED'}
                         </div>
-                        <div className="text-yellow-400">
-                          Mode: {selectedDrone.flightMode || 'MANUAL'}
+                        <div className="text-lg font-bold text-yellow-400 drop-shadow-lg">
+                          Mode: {selectedDrone.flightMode || 'UNKNOWN'}
                         </div>
                       </div>
                       
                       {/* Right Column */}
-                      <div className="text-right space-y-1">
-                        <div>Bat: {Math.round(selectedDrone.batteryLevel || 0)}%</div>
-                        <div>V: {((selectedDrone.voltage || 0) / 1000).toFixed(1)}V</div>
+                      <div className="text-right space-y-2">
+                        <div className="text-sm font-bold text-green-400">
+                          Battery: {Math.round(selectedDrone.batteryLevel || 0)}%
+                        </div>
+                        <div className="text-sm font-bold text-green-300">
+                          Voltage: {((selectedDrone.voltage || 0) / 1000).toFixed(1)}V
+                        </div>
                       </div>
                     </div>
                   </div>
