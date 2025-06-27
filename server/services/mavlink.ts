@@ -1008,34 +1008,9 @@ class MAVLinkService extends EventEmitter {
   }
 
   private startHeartbeat() {
-    this.heartbeatInterval = setInterval(() => {
-      if (this.useSimulation) {
-        // Simulation mode - just log for testing
-        const heartbeatMessage = {
-          system_id: 1,
-          component_id: 1,
-          message_id: 0,
-          message_name: "HEARTBEAT",
-          payload: {
-            type: 6, // MAV_TYPE_GCS
-            autopilot: 8, // MAV_AUTOPILOT_INVALID
-            base_mode: 0,
-            custom_mode: 0,
-            system_status: 4, // MAV_STATE_ACTIVE
-            mavlink_version: 3,
-          },
-        };
-
-        console.log("📤 MAVLink Message Sent:", {
-          ...heartbeatMessage,
-          timestamp: new Date().toISOString(),
-          direction: "OUTGOING",
-        });
-      } else {
-        // Real device mode - send actual MAVLink heartbeat
-        this.sendHeartbeatMessage();
-      }
-    }, 1000);
+    // Disable heartbeat for now - focus on receiving data from real hardware
+    // We don't need to send heartbeats to receive telemetry data
+    console.log("⏭️  Heartbeat disabled - focusing on receiving real drone data");
   }
 
   private sendHeartbeatMessage() {
@@ -1044,18 +1019,11 @@ class MAVLinkService extends EventEmitter {
     }
 
     try {
-      // Create MAVLink heartbeat message
-      const heartbeatMsg = new mavlink.messages.heartbeat(
-        6, // MAV_TYPE_GCS
-        8, // MAV_AUTOPILOT_INVALID
-        0, // base_mode
-        0, // custom_mode
-        4, // MAV_STATE_ACTIVE
-        3  // mavlink_version
-      );
-
-      // Pack the message
-      const buffer = heartbeatMsg.pack(this.mavlinkParser);
+      // Skip heartbeat sending for now - focus on receiving data
+      // The mavlink library message construction needs proper initialization
+      // For development, we'll focus on receiving telemetry data from real hardware
+      console.log('⏭️  Skipping heartbeat - focusing on receiving real drone data');
+      return;
 
       // Send based on connection type
       if (this.connectionType === "serial" && this.connection.write) {
