@@ -343,7 +343,7 @@ export default function DroneControl() {
                   <div 
                     className="absolute inset-0 transition-transform duration-300"
                     style={{
-                      transform: `translateY(${selectedDrone.pitch ? (selectedDrone.pitch * 180 / Math.PI) * 2 : 0}px) rotate(${selectedDrone.roll ? -(selectedDrone.roll * 180 / Math.PI) : 0}deg)`,
+                      transform: `translateY(${selectedDrone.pitch ? selectedDrone.pitch * 2 : 0}px) rotate(${selectedDrone.roll ? -selectedDrone.roll : 0}deg)`,
                       transformOrigin: 'center center'
                     }}
                   >
@@ -481,15 +481,15 @@ export default function DroneControl() {
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="font-semibold">Roll:</span>
-                        <span className="font-mono text-blue-700">{formatValue(selectedDrone.roll ? (selectedDrone.roll * 180 / Math.PI) : null, "°")}</span>
+                        <span className="font-mono text-blue-700">{formatValue(selectedDrone.roll, "°")}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="font-semibold">Pitch:</span>
-                        <span className="font-mono text-blue-700">{formatValue(selectedDrone.pitch ? (selectedDrone.pitch * 180 / Math.PI) : null, "°")}</span>
+                        <span className="font-mono text-blue-700">{formatValue(selectedDrone.pitch, "°")}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="font-semibold">Yaw:</span>
-                        <span className="font-mono text-blue-700">{formatValue(selectedDrone.yaw ? (selectedDrone.yaw * 180 / Math.PI) : null, "°")}</span>
+                        <span className="font-mono text-blue-700">{formatValue(selectedDrone.yaw, "°")}</span>
                       </div>
                     </div>
                   </div>
