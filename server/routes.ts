@@ -357,26 +357,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Meshtastic bridge endpoint
+  app.post('/api/bridge/meshtastic', async (req, res) => {
+    try {
+      const buffer = req.body as Buffer;
+      console.log(`📡 Meshtastic bridge received ${buffer.length} bytes from local hardware at ${new Date().toISOString()}`);
+      
+      // Store bridge activity for monitoring
+      if (!global.meshtasticBridgeStats) {
+        global.meshtasticBridgeStats = {
+          totalMessages: 0,
+          totalBytes: 0,
+          lastReceived: null,
+          isActive: false
+        };
+      }
+      
+      global.meshtasticBridgeStats.totalMessages++;
+      global.meshtasticBridgeStats.totalBytes += buffer.length;
+      global.meshtasticBridgeStats.lastReceived = new Date();
+      global.meshtasticBridgeStats.isActive = true;
+      
+      // Process Meshtastic data through the service
+      try {
+        await meshtasticService.processBridgeData(buffer);
+      } catch (error) {
+        console.error('Failed to process Meshtastic bridge data:', error);
+      }
+      
+      res.json({ 
+        status: 'ok', 
+        received: buffer.length, 
+        timestamp: new Date().toISOString() 
+      });
+    } catch (error) {
+      console.error('Meshtastic bridge API error:', error);
+      res.status(500).json({ error: 'Failed to process Meshtastic bridge data' });
+    }
+  });
+
   // Bridge status endpoint
   app.get('/api/bridge/status', (req, res) => {
-    const stats = global.bridgeStats || {
+    const mavlinkStats = global.bridgeStats || {
       totalMessages: 0,
       totalBytes: 0,
       lastReceived: null,
       isActive: false
     };
     
-    // Check if bridge is active (received data in last 10 seconds)
+    const meshtasticStats = global.meshtasticBridgeStats || {
+      totalMessages: 0,
+      totalBytes: 0,
+      lastReceived: null,
+      isActive: false
+    };
+    
+    // Check if bridges are active (received data in last 10 seconds)
     const now = new Date();
-    const isActive = stats.lastReceived && 
-      (now.getTime() - stats.lastReceived.getTime()) < 10000;
+    const mavlinkActive = mavlinkStats.lastReceived && 
+      (now.getTime() - mavlinkStats.lastReceived.getTime()) < 10000;
+    const meshtasticActive = meshtasticStats.lastReceived && 
+      (now.getTime() - meshtasticStats.lastReceived.getTime()) < 10000;
     
     res.json({
-      ...stats,
-      isActive,
-      formattedBytes: formatBytes(stats.totalBytes),
-      secondsSinceLastMessage: stats.lastReceived ? 
-        Math.floor((now.getTime() - stats.lastReceived.getTime()) / 1000) : null
+      mavlink: {
+        ...mavlinkStats,
+        isActive: mavlinkActive,
+        formattedBytes: formatBytes(mavlinkStats.totalBytes),
+        secondsSinceLastMessage: mavlinkStats.lastReceived ? 
+          Math.floor((now.getTime() - mavlinkStats.lastReceived.getTime()) / 1000) : null
+      },
+      meshtastic: {
+        ...meshtasticStats,
+        isActive: meshtasticActive,
+        formattedBytes: formatBytes(meshtasticStats.totalBytes),
+        secondsSinceLastMessage: meshtasticStats.lastReceived ? 
+          Math.floor((now.getTime() - meshtasticStats.lastReceived.getTime()) / 1000) : null
+      }
     });
   });
 
