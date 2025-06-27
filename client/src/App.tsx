@@ -22,48 +22,45 @@ function ScrollToTop() {
   const [location] = useLocation();
   
   useEffect(() => {
-    // Global scroll prevention setup
+    // Lock the body position immediately on route change
+    const currentScrollY = window.scrollY;
+    document.body.classList.add('navigation-lock');
+    document.body.style.top = `-${currentScrollY}px`;
+    
+    // Force immediate scroll reset
     const preventScrollBehavior = () => {
       window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     };
     
-    // Immediate reset
-    preventScrollBehavior();
-    
     // Disable scroll restoration
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual';
     }
     
-    // Multiple prevention attempts
-    requestAnimationFrame(preventScrollBehavior);
+    // Multiple immediate resets
+    preventScrollBehavior();
+    requestAnimationFrame(() => {
+      preventScrollBehavior();
+      // Unlock body after ensuring position is reset
+      setTimeout(() => {
+        document.body.classList.remove('navigation-lock');
+        document.body.style.top = '';
+        preventScrollBehavior();
+      }, 100);
+    });
+    
+    // Additional safety resets
     setTimeout(preventScrollBehavior, 0);
     setTimeout(preventScrollBehavior, 10);
     setTimeout(preventScrollBehavior, 50);
-    setTimeout(preventScrollBehavior, 100);
-    
-    // Add scroll event listener to force position reset
-    const handleScroll = (e: Event) => {
-      if (window.scrollY !== 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        preventScrollBehavior();
-      }
-    };
-    
-    // Temporarily listen for scroll events and prevent them
-    window.addEventListener('scroll', handleScroll, { passive: false });
-    
-    // Remove the scroll listener after a short delay
-    const removeListener = setTimeout(() => {
-      window.removeEventListener('scroll', handleScroll);
-    }, 500);
+    setTimeout(preventScrollBehavior, 200);
     
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      clearTimeout(removeListener);
+      // Cleanup on unmount
+      document.body.classList.remove('navigation-lock');
+      document.body.style.top = '';
     };
   }, [location]);
   
