@@ -1,6 +1,14 @@
 @echo off
-echo 🚀 MeshTac Local Deployment Setup
-echo ==================================
+title MeshTac Setup - Local Deployment
+color 0A
+echo.
+echo ========================================
+echo    MeshTac Local Deployment Setup
+echo ========================================
+echo.
+echo This script will help you set up MeshTac on your computer.
+echo Please wait while we check your system...
+echo.
 
 REM Check Node.js
 node --version >nul 2>&1
