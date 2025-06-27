@@ -311,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: 'ok', message: 'Bridge connection successful' });
   });
 
-  app.post('/api/bridge/mavlink', (req, res) => {
+  app.post('/api/bridge/mavlink', async (req, res) => {
     try {
       const { data } = req.body;
       if (!data) {
@@ -337,6 +337,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       global.bridgeStats.totalBytes += buffer.length;
       global.bridgeStats.lastReceived = new Date();
       global.bridgeStats.isActive = true;
+      
+      // Process the MAVLink data through the service
+      // This will parse messages and create drone records in the database
+      try {
+        await mavlinkService.processBridgeData(buffer);
+      } catch (error) {
+        console.error('Failed to process bridge data through MAVLink service:', error);
+      }
       
       res.json({ 
         status: 'ok', 

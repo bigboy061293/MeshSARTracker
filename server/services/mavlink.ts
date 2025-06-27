@@ -1170,6 +1170,127 @@ class MAVLinkService extends EventEmitter {
     }
   }
 
+  /**
+   * Process raw MAVLink data received from the cloud bridge
+   * @param buffer Raw MAVLink data buffer from the bridge
+   */
+  async processBridgeData(buffer: Buffer) {
+    try {
+      // Initialize MAVLink parser if not already done
+      if (!this.mavlinkParser) {
+        this.setupMAVLinkParser();
+      }
+
+      // Process the buffer through the MAVLink parser
+      // The parser will emit 'data' events for valid MAVLink messages
+      if (this.mavlinkParser && this.mavlinkParser.parseBuffer) {
+        this.mavlinkParser.parseBuffer(buffer);
+      } else {
+        // Fallback: try to parse manually if the MAVLink library doesn't have parseBuffer
+        // This is a simple implementation that looks for MAVLink v2.0 messages
+        for (let i = 0; i < buffer.length - 12; i++) {
+          // Look for MAVLink v2.0 magic byte (0xFD)
+          if (buffer[i] === 0xFD) {
+            try {
+              const payloadLength = buffer[i + 1];
+              const messageLength = payloadLength + 12; // Header + payload + checksum
+              
+              if (i + messageLength <= buffer.length) {
+                const messageBuffer = buffer.slice(i, i + messageLength);
+                
+                // Extract basic message info
+                const systemId = buffer[i + 5];
+                const componentId = buffer[i + 6];
+                const messageId = buffer.readUIntLE(i + 7, 3); // 24-bit message ID
+                
+                // Create a simplified MAVLink message
+                const message: MAVLinkMessage = {
+                  system_id: systemId,
+                  component_id: componentId,
+                  message_id: messageId,
+                  payload: {}, // We'll populate this based on message type
+                };
+                
+                // Process specific message types we care about
+                if (messageId === 0) { // HEARTBEAT
+                  message.payload = {
+                    type: buffer[i + 10],
+                    autopilot: buffer[i + 11],
+                    base_mode: buffer[i + 12],
+                    custom_mode: buffer.readUInt32LE(i + 13),
+                    system_status: buffer[i + 17],
+                    mavlink_version: buffer[i + 18],
+                  };
+                  await this.handleMAVLinkMessage(message);
+                } else if (messageId === 33) { // GLOBAL_POSITION_INT
+                  if (payloadLength >= 28) {
+                    message.payload = {
+                      time_boot_ms: buffer.readUInt32LE(i + 10),
+                      lat: buffer.readInt32LE(i + 14),
+                      lon: buffer.readInt32LE(i + 18),
+                      alt: buffer.readInt32LE(i + 22),
+                      relative_alt: buffer.readInt32LE(i + 26),
+                      vx: buffer.readInt16LE(i + 30),
+                      vy: buffer.readInt16LE(i + 32),
+                      vz: buffer.readInt16LE(i + 34),
+                      hdg: buffer.readUInt16LE(i + 36),
+                    };
+                    await this.handleMAVLinkMessage(message);
+                  }
+                } else if (messageId === 147) { // BATTERY_STATUS
+                  if (payloadLength >= 36) {
+                    message.payload = {
+                      id: buffer[i + 10],
+                      battery_function: buffer[i + 11],
+                      type: buffer[i + 12],
+                      temperature: buffer.readInt16LE(i + 13),
+                      voltages: [
+                        buffer.readUInt16LE(i + 15),
+                        buffer.readUInt16LE(i + 17),
+                        buffer.readUInt16LE(i + 19),
+                        buffer.readUInt16LE(i + 21),
+                        buffer.readUInt16LE(i + 23),
+                        buffer.readUInt16LE(i + 25),
+                        buffer.readUInt16LE(i + 27),
+                        buffer.readUInt16LE(i + 29),
+                        buffer.readUInt16LE(i + 31),
+                        buffer.readUInt16LE(i + 33),
+                      ],
+                      current_battery: buffer.readInt16LE(i + 35),
+                      current_consumed: buffer.readInt32LE(i + 37),
+                      energy_consumed: buffer.readInt32LE(i + 41),
+                      battery_remaining: buffer[i + 45],
+                    };
+                    await this.handleMAVLinkMessage(message);
+                  }
+                } else if (messageId === 30) { // ATTITUDE
+                  if (payloadLength >= 28) {
+                    message.payload = {
+                      time_boot_ms: buffer.readUInt32LE(i + 10),
+                      roll: buffer.readFloatLE(i + 14),
+                      pitch: buffer.readFloatLE(i + 18),
+                      yaw: buffer.readFloatLE(i + 22),
+                      rollspeed: buffer.readFloatLE(i + 26),
+                      pitchspeed: buffer.readFloatLE(i + 30),
+                      yawspeed: buffer.readFloatLE(i + 34),
+                    };
+                    await this.handleMAVLinkMessage(message);
+                  }
+                }
+                
+                i += messageLength - 1; // Skip processed message
+              }
+            } catch (parseError) {
+              // Skip invalid messages
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error processing bridge MAVLink data:', error);
+    }
+  }
+
   async disconnect() {
     this.connected = false;
 
