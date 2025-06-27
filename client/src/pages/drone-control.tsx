@@ -331,132 +331,158 @@ export default function DroneControl() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Gauge className="h-5 w-5 text-blue-500" />
-                <span>AHRS (Attitude & Heading Reference System)</span>
+                <span>Primary Flight Display (PFD)</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Attitude Indicators */}
-                <div className="space-y-4">
-                  <h4 className="text-sm font-semibold text-dark mb-3">Attitude</h4>
+              <div className="relative w-full max-w-4xl mx-auto">
+                {/* Main Flight Display */}
+                <div className="relative w-full h-96 bg-gradient-to-b from-sky-400 to-blue-600 rounded-lg overflow-hidden border-2 border-gray-400">
                   
-                  {/* Roll */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-dark-secondary">Roll</span>
-                      <span className="font-mono text-dark">
-                        {formatValue(selectedDrone.roll ? (selectedDrone.roll * 180 / Math.PI) : null, "°")}
-                      </span>
-                    </div>
-                    <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="absolute h-full bg-blue-500 transition-all duration-300"
+                  {/* Sky/Ground Horizon */}
+                  <div 
+                    className="absolute inset-0 transition-transform duration-300"
+                    style={{
+                      transform: `translateY(${selectedDrone.pitch ? (selectedDrone.pitch * 180 / Math.PI) * 2 : 0}px) rotate(${selectedDrone.roll ? -(selectedDrone.roll * 180 / Math.PI) : 0}deg)`,
+                      transformOrigin: 'center center'
+                    }}
+                  >
+                    {/* Sky */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-sky-400 to-blue-500" />
+                    
+                    {/* Ground */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-green-600 to-green-500" />
+                    
+                    {/* Horizon Line */}
+                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white shadow-lg" 
+                         style={{ transform: 'translateY(-1px)' }} />
+                    
+                    {/* Pitch Lines */}
+                    {[-30, -20, -10, 10, 20, 30].map(angle => (
+                      <div
+                        key={angle}
+                        className="absolute left-1/4 right-1/4 h-0.5 bg-white opacity-80"
                         style={{
-                          width: '2px',
-                          left: '50%',
-                          transform: `translateX(-50%) ${selectedDrone.roll ? `rotate(${selectedDrone.roll * 180 / Math.PI}deg)` : ''}`,
-                          transformOrigin: 'bottom center'
+                          top: `calc(50% + ${angle * 3}px)`,
+                          transform: 'translateY(-1px)'
                         }}
-                      />
-                      <div className="absolute top-1/2 left-1/2 w-1 h-1 bg-dark rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+                      >
+                        <span className="absolute -left-8 -top-2 text-white text-xs font-semibold">
+                          {Math.abs(angle)}
+                        </span>
+                        <span className="absolute -right-8 -top-2 text-white text-xs font-semibold">
+                          {Math.abs(angle)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Aircraft Symbol (Fixed Center) */}
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                    <div className="relative">
+                      {/* Center dot */}
+                      <div className="absolute w-3 h-3 bg-yellow-400 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+                      {/* Wings */}
+                      <div className="absolute w-16 h-1 bg-yellow-400 transform -translate-x-1/2 -translate-y-1/2" />
+                      <div className="absolute w-1 h-8 bg-yellow-400 transform -translate-x-1/2 -translate-y-1/2" />
                     </div>
                   </div>
-
-                  {/* Pitch */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-dark-secondary">Pitch</span>
-                      <span className="font-mono text-dark">
-                        {formatValue(selectedDrone.pitch ? (selectedDrone.pitch * 180 / Math.PI) : null, "°")}
-                      </span>
-                    </div>
-                    <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                  
+                  {/* Heading Tape (Top) */}
+                  <div className="absolute top-0 left-0 right-0 h-12 bg-black bg-opacity-50">
+                    <div className="relative w-full h-full overflow-hidden">
                       <div 
-                        className="absolute h-full bg-green-500 transition-all duration-300"
+                        className="absolute top-0 h-full flex items-center transition-transform duration-300"
                         style={{
-                          width: '2px',
-                          left: '50%',
-                          transform: `translateX(-50%) ${selectedDrone.pitch ? `rotate(${selectedDrone.pitch * 180 / Math.PI}deg)` : ''}`,
-                          transformOrigin: 'bottom center'
+                          transform: `translateX(${50 - (selectedDrone.heading || 0) / 360 * 100}%)`
                         }}
-                      />
-                      <div className="absolute top-1/2 left-1/2 w-1 h-1 bg-dark rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+                      >
+                        {Array.from({ length: 36 }, (_, i) => i * 10).map(heading => (
+                          <div key={heading} className="relative flex-shrink-0 w-8 h-full flex flex-col items-center justify-center">
+                            <div className="text-white text-xs font-mono">
+                              {heading === 0 ? 'N' : heading === 90 ? 'E' : heading === 180 ? 'S' : heading === 270 ? 'W' : heading.toString().padStart(3, '0')}
+                            </div>
+                            <div className="w-0.5 h-3 bg-white" />
+                          </div>
+                        ))}
+                      </div>
+                      {/* Heading Bug */}
+                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-yellow-400" />
+                      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-yellow-400 text-xs font-mono px-1 rounded">
+                        {Math.round(selectedDrone.heading || 0).toString().padStart(3, '0')}°
+                      </div>
                     </div>
                   </div>
-
-                  {/* Yaw/Heading */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-dark-secondary">Yaw</span>
-                      <span className="font-mono text-dark">
-                        {formatValue(selectedDrone.yaw ? (selectedDrone.yaw * 180 / Math.PI) : null, "°")}
-                      </span>
+                  
+                  {/* Altitude Tape (Right) */}
+                  <div className="absolute top-0 right-0 w-16 bottom-0 bg-black bg-opacity-50">
+                    <div className="relative w-full h-full overflow-hidden">
+                      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-75 text-green-400 text-xs font-mono px-1 rounded">
+                        {Math.round((selectedDrone.relativeAltitude || 0) / 1000)}m
+                      </div>
+                      <div className="absolute right-0 top-1/2 w-3 h-0.5 bg-white" />
                     </div>
-                    <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="absolute h-full bg-purple-500 transition-all duration-300"
-                        style={{
-                          width: '2px',
-                          left: '50%',
-                          transform: `translateX(-50%) ${selectedDrone.yaw ? `rotate(${selectedDrone.yaw * 180 / Math.PI}deg)` : ''}`,
-                          transformOrigin: 'bottom center'
-                        }}
-                      />
-                      <div className="absolute top-1/2 left-1/2 w-1 h-1 bg-dark rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  
+                  {/* Speed Tape (Left) */}
+                  <div className="absolute top-0 left-0 w-16 bottom-0 bg-black bg-opacity-50">
+                    <div className="relative w-full h-full overflow-hidden">
+                      <div className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-75 text-green-400 text-xs font-mono px-1 rounded">
+                        {Math.round(Math.sqrt(Math.pow((selectedDrone.velocityX || 0) / 100, 2) + Math.pow((selectedDrone.velocityY || 0) / 100, 2)))}m/s
+                      </div>
+                      <div className="absolute left-0 top-1/2 w-3 h-0.5 bg-white" />
+                    </div>
+                  </div>
+                  
+                  {/* Status Information */}
+                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-black bg-opacity-50 p-2">
+                    <div className="grid grid-cols-3 gap-4 h-full text-white text-xs">
+                      {/* Left Column */}
+                      <div className="space-y-1">
+                        <div>GPS: {selectedDrone.latitude && selectedDrone.longitude ? '3D Fix' : 'No Fix'}</div>
+                        <div>Sat: {selectedDrone.satelliteCount || 0}</div>
+                      </div>
+                      
+                      {/* Center Column */}
+                      <div className="text-center space-y-1">
+                        <div className="text-lg font-bold text-red-400">
+                          {selectedDrone.armed ? 'ARMED' : 'DISARMED'}
+                        </div>
+                        <div className="text-yellow-400">
+                          Mode: {selectedDrone.flightMode || 'MANUAL'}
+                        </div>
+                      </div>
+                      
+                      {/* Right Column */}
+                      <div className="text-right space-y-1">
+                        <div>Bat: {Math.round(selectedDrone.batteryLevel || 0)}%</div>
+                        <div>V: {((selectedDrone.voltage || 0) / 1000).toFixed(1)}V</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Compass and Altitude */}
-                <div className="space-y-4">
-                  <h4 className="text-sm font-semibold text-dark mb-3">Navigation</h4>
-                  
-                  {/* Compass */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-dark-secondary">Heading</span>
-                      <span className="font-mono text-dark">{formatValue(selectedDrone.heading, "°")}</span>
-                    </div>
-                    <div className="relative w-24 h-24 mx-auto">
-                      <div className="absolute inset-0 rounded-full border-4 border-gray-300">
-                        {/* Compass markings */}
-                        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 text-xs font-bold text-dark">N</div>
-                        <div className="absolute top-1/2 -right-1 transform -translate-y-1/2 text-xs font-bold text-dark">E</div>
-                        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 text-xs font-bold text-dark">S</div>
-                        <div className="absolute top-1/2 -left-1 transform -translate-y-1/2 text-xs font-bold text-dark">W</div>
-                      </div>
-                      {/* Compass needle */}
-                      <div 
-                        className="absolute top-1/2 left-1/2 w-8 h-0.5 bg-red-500 transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-300"
-                        style={{
-                          transform: `translate(-50%, -50%) rotate(${selectedDrone.heading || 0}deg)`,
-                          transformOrigin: 'center'
-                        }}
-                      />
-                      <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-red-600 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
-                    </div>
+                
+                {/* Numeric Data Display */}
+                <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+                  <div className="bg-gray-800 text-white p-3 rounded">
+                    <div className="font-semibold mb-2">Attitude</div>
+                    <div>Roll: {formatValue(selectedDrone.roll ? (selectedDrone.roll * 180 / Math.PI) : null, "°")}</div>
+                    <div>Pitch: {formatValue(selectedDrone.pitch ? (selectedDrone.pitch * 180 / Math.PI) : null, "°")}</div>
+                    <div>Yaw: {formatValue(selectedDrone.yaw ? (selectedDrone.yaw * 180 / Math.PI) : null, "°")}</div>
                   </div>
-
-                  {/* Altitude */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-dark-secondary">MSL Altitude</span>
-                      <span className="font-mono text-dark">
-                        {formatValue(selectedDrone.altitude ? selectedDrone.altitude / 1000 : null, "m")}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-dark-secondary">AGL Altitude</span>
-                      <span className="font-mono text-dark">
-                        {formatValue(selectedDrone.relativeAltitude ? selectedDrone.relativeAltitude / 1000 : null, "m")}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-dark-secondary">Vertical Speed</span>
-                      <span className="font-mono text-dark">
-                        {formatValue(selectedDrone.verticalSpeed ? selectedDrone.verticalSpeed / 100 : null, "m/s")}
-                      </span>
-                    </div>
+                  
+                  <div className="bg-gray-800 text-white p-3 rounded">
+                    <div className="font-semibold mb-2">Position</div>
+                    <div>Lat: {formatValue(selectedDrone.latitude)}</div>
+                    <div>Lon: {formatValue(selectedDrone.longitude)}</div>
+                    <div>Alt: {formatValue(selectedDrone.altitude ? selectedDrone.altitude / 1000 : null, "m")}</div>
+                  </div>
+                  
+                  <div className="bg-gray-800 text-white p-3 rounded">
+                    <div className="font-semibold mb-2">System</div>
+                    <div>ID: {selectedDrone.systemId || selectedDrone.id}</div>
+                    <div>Status: {selectedDrone.isConnected ? 'Connected' : 'Disconnected'}</div>
+                    <div>Uptime: {Math.round((selectedDrone.bootTime || 0) / 1000)}s</div>
                   </div>
                 </div>
               </div>
