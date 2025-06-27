@@ -476,25 +476,60 @@ export default function DroneControl() {
                 
                 {/* Numeric Data Display */}
                 <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
-                  <div className="bg-gray-800 text-white p-3 rounded">
-                    <div className="font-semibold mb-2">Attitude</div>
-                    <div>Roll: {formatValue(selectedDrone.roll ? (selectedDrone.roll * 180 / Math.PI) : null, "°")}</div>
-                    <div>Pitch: {formatValue(selectedDrone.pitch ? (selectedDrone.pitch * 180 / Math.PI) : null, "°")}</div>
-                    <div>Yaw: {formatValue(selectedDrone.yaw ? (selectedDrone.yaw * 180 / Math.PI) : null, "°")}</div>
+                  <div className="bg-white border-2 border-blue-500 text-black p-4 rounded-lg shadow-lg">
+                    <div className="font-bold mb-3 text-blue-600 text-lg border-b border-blue-300 pb-1">Attitude</div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Roll:</span>
+                        <span className="font-mono text-blue-700">{formatValue(selectedDrone.roll ? (selectedDrone.roll * 180 / Math.PI) : null, "°")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Pitch:</span>
+                        <span className="font-mono text-blue-700">{formatValue(selectedDrone.pitch ? (selectedDrone.pitch * 180 / Math.PI) : null, "°")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Yaw:</span>
+                        <span className="font-mono text-blue-700">{formatValue(selectedDrone.yaw ? (selectedDrone.yaw * 180 / Math.PI) : null, "°")}</span>
+                      </div>
+                    </div>
                   </div>
                   
-                  <div className="bg-gray-800 text-white p-3 rounded">
-                    <div className="font-semibold mb-2">Position</div>
-                    <div>Lat: {formatValue(selectedDrone.latitude)}</div>
-                    <div>Lon: {formatValue(selectedDrone.longitude)}</div>
-                    <div>Alt: {formatValue(selectedDrone.altitude ? selectedDrone.altitude / 1000 : null, "m")}</div>
+                  <div className="bg-white border-2 border-green-500 text-black p-4 rounded-lg shadow-lg">
+                    <div className="font-bold mb-3 text-green-600 text-lg border-b border-green-300 pb-1">Position</div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Latitude:</span>
+                        <span className="font-mono text-green-700">{formatValue(selectedDrone.latitude)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Longitude:</span>
+                        <span className="font-mono text-green-700">{formatValue(selectedDrone.longitude)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Altitude:</span>
+                        <span className="font-mono text-green-700">{formatValue(selectedDrone.altitude ? selectedDrone.altitude / 1000 : null, "m")}</span>
+                      </div>
+                    </div>
                   </div>
                   
-                  <div className="bg-gray-800 text-white p-3 rounded">
-                    <div className="font-semibold mb-2">System</div>
-                    <div>ID: {selectedDrone.systemId || selectedDrone.id}</div>
-                    <div>Status: {selectedDrone.isConnected ? 'Connected' : 'Disconnected'}</div>
-                    <div>Uptime: {Math.round((selectedDrone.bootTime || 0) / 1000)}s</div>
+                  <div className="bg-white border-2 border-purple-500 text-black p-4 rounded-lg shadow-lg">
+                    <div className="font-bold mb-3 text-purple-600 text-lg border-b border-purple-300 pb-1">System</div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="font-semibold">ID:</span>
+                        <span className="font-mono text-purple-700">{selectedDrone.systemId || selectedDrone.id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Status:</span>
+                        <span className={`font-mono ${selectedDrone.isConnected ? 'text-green-600' : 'text-red-600'}`}>
+                          {selectedDrone.isConnected ? 'Connected' : 'Disconnected'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Uptime:</span>
+                        <span className="font-mono text-purple-700">{Math.round((selectedDrone.bootTime || 0) / 1000)}s</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
