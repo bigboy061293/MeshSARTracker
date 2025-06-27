@@ -51,8 +51,8 @@ class MeshtasticService extends EventEmitter {
       console.log('Initializing Meshtastic service...');
       
       this.connected = true;
-      this.startNodeStatusUpdates();
-      this.simulateIncomingData(); // For development/demo
+      // All simulation disabled - only real bridge data will be processed
+      console.log('📡 Meshtastic simulation disabled - waiting for bridge data');
       
       console.log('Meshtastic service initialized');
     } catch (error) {
