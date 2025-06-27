@@ -58,22 +58,34 @@ export default function TacticalMapPage() {
   const dronesWithGPS = getDronesWithGPS();
 
   const handleShareMap = () => {
-    // Generate current map URL with current state
-    const currentUrl = window.location.href;
-    setQrDialogOpen(true);
-    
-    // Also copy to clipboard immediately
-    navigator.clipboard.writeText(currentUrl).then(() => {
-      toast({
-        title: "Map URL Copied",
-        description: "The map link has been copied to your clipboard",
+    console.log("Share View button clicked!");
+    try {
+      // Generate current map URL with current state
+      const currentUrl = window.location.href;
+      console.log("Current URL:", currentUrl);
+      setQrDialogOpen(true);
+      
+      // Also copy to clipboard immediately
+      navigator.clipboard.writeText(currentUrl).then(() => {
+        toast({
+          title: "Map URL Copied",
+          description: "The map link has been copied to your clipboard",
+        });
+      }).catch((error) => {
+        console.error("Clipboard error:", error);
+        toast({
+          title: "QR Code Generated",
+          description: "Scan the QR code to share this map view",
+        });
       });
-    }).catch(() => {
+    } catch (error) {
+      console.error("Error in handleShareMap:", error);
       toast({
-        title: "QR Code Generated",
-        description: "Scan the QR code to share this map view",
+        title: "Error",
+        description: "Failed to generate share link",
+        variant: "destructive",
       });
-    });
+    }
   };
 
   const handleFullscreen = () => {
