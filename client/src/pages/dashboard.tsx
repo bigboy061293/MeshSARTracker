@@ -209,7 +209,9 @@ export default function Dashboard() {
         {/* Real-time Signal Monitoring */}
         <Card className="bg-surface-variant border-gray-700">
           <CardHeader className="border-b border-gray-700">
-            <CardTitle className="text-lg font-semibold">Signal Strength (RSSI)</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-semibold">Signal Strength (RSSI)</CardTitle>
+            </div>
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-64">

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Clock } from "lucide-react";
 import type { NodeData } from '@/types';
 
 interface SignalChartProps {
@@ -12,10 +15,31 @@ interface ChartDataPoint {
   values: { [nodeId: string]: number };
 }
 
+interface TimeScale {
+  label: string;
+  seconds: number;
+  interval: number; // Data collection interval in milliseconds
+  maxPoints: number;
+}
+
+const TIME_SCALES: TimeScale[] = [
+  { label: "1 Second", seconds: 1, interval: 100, maxPoints: 10 },
+  { label: "10 Seconds", seconds: 10, interval: 500, maxPoints: 20 },
+  { label: "30 Seconds", seconds: 30, interval: 1000, maxPoints: 30 },
+  { label: "1 Minute", seconds: 60, interval: 2000, maxPoints: 30 },
+  { label: "5 Minutes", seconds: 300, interval: 10000, maxPoints: 30 },
+  { label: "15 Minutes", seconds: 900, interval: 30000, maxPoints: 30 },
+  { label: "30 Minutes", seconds: 1800, interval: 60000, maxPoints: 30 },
+  { label: "1 Hour", seconds: 3600, interval: 120000, maxPoints: 30 },
+  { label: "2 Hours", seconds: 7200, interval: 240000, maxPoints: 30 },
+  { label: "5 Hours", seconds: 18000, interval: 600000, maxPoints: 30 },
+];
+
 export default function SignalChart({ nodes }: SignalChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const maxDataPoints = 20;
+  const [selectedTimeScale, setSelectedTimeScale] = useState<TimeScale>(TIME_SCALES[2]); // Default to 30 seconds
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
 
   // Colors for different nodes
   const nodeColors = [
@@ -27,17 +51,32 @@ export default function SignalChart({ nodes }: SignalChartProps) {
     '#00BCD4', // cyan
   ];
 
+  // Data collection effect - controlled by time scale interval
   useEffect(() => {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    const now = Date.now();
+    
+    // Check if enough time has passed based on selected time scale
+    if (now - lastUpdate < selectedTimeScale.interval) {
+      return;
+    }
+
+    const currentTime = new Date(now);
+    const timeString = selectedTimeScale.seconds <= 60 
+      ? currentTime.toLocaleTimeString('en-US', { 
+          hour12: false, 
+          hour: '2-digit', 
+          minute: '2-digit',
+          second: '2-digit'
+        })
+      : currentTime.toLocaleTimeString('en-US', { 
+          hour12: false, 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
 
     const newDataPoint: ChartDataPoint = {
       time: timeString,
-      timestamp: now.getTime(),
+      timestamp: now,
       values: {}
     };
 
@@ -49,10 +88,25 @@ export default function SignalChart({ nodes }: SignalChartProps) {
     });
 
     setChartData(prevData => {
-      const updatedData = [...prevData, newDataPoint];
-      return updatedData.slice(-maxDataPoints);
+      const cutoffTime = now - (selectedTimeScale.seconds * 1000);
+      const filteredData = prevData.filter(point => point.timestamp > cutoffTime);
+      const updatedData = [...filteredData, newDataPoint];
+      return updatedData.slice(-selectedTimeScale.maxPoints);
     });
-  }, [nodes]);
+
+    setLastUpdate(now);
+  }, [nodes, selectedTimeScale, lastUpdate]);
+
+  // Clear data when time scale changes
+  useEffect(() => {
+    setChartData([]);
+    setLastUpdate(Date.now());
+  }, [selectedTimeScale]);
+
+  const handleClearData = () => {
+    setChartData([]);
+    setLastUpdate(Date.now());
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -203,12 +257,51 @@ export default function SignalChart({ nodes }: SignalChartProps) {
   }, [chartData, nodes]);
 
   return (
-    <div className="w-full h-full">
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full"
-        style={{ background: 'var(--surface-variant)' }}
-      />
+    <div className="w-full h-full flex flex-col">
+      {/* Time Scale Controls */}
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-gray-400" />
+          <span className="text-sm text-gray-400">Time Scale:</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select 
+            value={selectedTimeScale.label} 
+            onValueChange={(value) => {
+              const scale = TIME_SCALES.find(ts => ts.label === value);
+              if (scale) setSelectedTimeScale(scale);
+            }}
+          >
+            <SelectTrigger className="w-32 h-8 text-xs bg-surface border-gray-600">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface border-gray-600">
+              {TIME_SCALES.map((scale) => (
+                <SelectItem key={scale.label} value={scale.label} className="text-xs">
+                  {scale.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleClearData}
+            className="h-8 px-2 text-xs border-gray-600 hover:bg-gray-700"
+          >
+            Clear
+          </Button>
+        </div>
+      </div>
+
+      {/* Chart Canvas */}
+      <div className="flex-1">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full"
+          style={{ background: 'var(--surface-variant)' }}
+        />
+      </div>
     </div>
   );
 }
