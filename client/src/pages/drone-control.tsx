@@ -326,6 +326,143 @@ export default function DroneControl() {
             </Card>
           </div>
 
+          {/* AHRS Viewer */}
+          <Card className="bg-surface-variant border-gray-700">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Gauge className="h-5 w-5 text-blue-500" />
+                <span>AHRS (Attitude & Heading Reference System)</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Attitude Indicators */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-dark mb-3">Attitude</h4>
+                  
+                  {/* Roll */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-dark-secondary">Roll</span>
+                      <span className="font-mono text-dark">
+                        {formatValue(selectedDrone.roll ? (selectedDrone.roll * 180 / Math.PI) : null, "°")}
+                      </span>
+                    </div>
+                    <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="absolute h-full bg-blue-500 transition-all duration-300"
+                        style={{
+                          width: '2px',
+                          left: '50%',
+                          transform: `translateX(-50%) ${selectedDrone.roll ? `rotate(${selectedDrone.roll * 180 / Math.PI}deg)` : ''}`,
+                          transformOrigin: 'bottom center'
+                        }}
+                      />
+                      <div className="absolute top-1/2 left-1/2 w-1 h-1 bg-dark rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                  </div>
+
+                  {/* Pitch */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-dark-secondary">Pitch</span>
+                      <span className="font-mono text-dark">
+                        {formatValue(selectedDrone.pitch ? (selectedDrone.pitch * 180 / Math.PI) : null, "°")}
+                      </span>
+                    </div>
+                    <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="absolute h-full bg-green-500 transition-all duration-300"
+                        style={{
+                          width: '2px',
+                          left: '50%',
+                          transform: `translateX(-50%) ${selectedDrone.pitch ? `rotate(${selectedDrone.pitch * 180 / Math.PI}deg)` : ''}`,
+                          transformOrigin: 'bottom center'
+                        }}
+                      />
+                      <div className="absolute top-1/2 left-1/2 w-1 h-1 bg-dark rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                  </div>
+
+                  {/* Yaw/Heading */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-dark-secondary">Yaw</span>
+                      <span className="font-mono text-dark">
+                        {formatValue(selectedDrone.yaw ? (selectedDrone.yaw * 180 / Math.PI) : null, "°")}
+                      </span>
+                    </div>
+                    <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="absolute h-full bg-purple-500 transition-all duration-300"
+                        style={{
+                          width: '2px',
+                          left: '50%',
+                          transform: `translateX(-50%) ${selectedDrone.yaw ? `rotate(${selectedDrone.yaw * 180 / Math.PI}deg)` : ''}`,
+                          transformOrigin: 'bottom center'
+                        }}
+                      />
+                      <div className="absolute top-1/2 left-1/2 w-1 h-1 bg-dark rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Compass and Altitude */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-dark mb-3">Navigation</h4>
+                  
+                  {/* Compass */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-dark-secondary">Heading</span>
+                      <span className="font-mono text-dark">{formatValue(selectedDrone.heading, "°")}</span>
+                    </div>
+                    <div className="relative w-24 h-24 mx-auto">
+                      <div className="absolute inset-0 rounded-full border-4 border-gray-300">
+                        {/* Compass markings */}
+                        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 text-xs font-bold text-dark">N</div>
+                        <div className="absolute top-1/2 -right-1 transform -translate-y-1/2 text-xs font-bold text-dark">E</div>
+                        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 text-xs font-bold text-dark">S</div>
+                        <div className="absolute top-1/2 -left-1 transform -translate-y-1/2 text-xs font-bold text-dark">W</div>
+                      </div>
+                      {/* Compass needle */}
+                      <div 
+                        className="absolute top-1/2 left-1/2 w-8 h-0.5 bg-red-500 transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-300"
+                        style={{
+                          transform: `translate(-50%, -50%) rotate(${selectedDrone.heading || 0}deg)`,
+                          transformOrigin: 'center'
+                        }}
+                      />
+                      <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-red-600 rounded-full transform -translate-x-1/2 -translate-y-1/2" />
+                    </div>
+                  </div>
+
+                  {/* Altitude */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-dark-secondary">MSL Altitude</span>
+                      <span className="font-mono text-dark">
+                        {formatValue(selectedDrone.altitude ? selectedDrone.altitude / 1000 : null, "m")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-dark-secondary">AGL Altitude</span>
+                      <span className="font-mono text-dark">
+                        {formatValue(selectedDrone.relativeAltitude ? selectedDrone.relativeAltitude / 1000 : null, "m")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-dark-secondary">Vertical Speed</span>
+                      <span className="font-mono text-dark">
+                        {formatValue(selectedDrone.verticalSpeed ? selectedDrone.verticalSpeed / 100 : null, "m/s")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Command Panel */}
           <Card className="bg-surface-variant border-gray-700">
             <CardHeader>
