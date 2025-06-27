@@ -109,6 +109,7 @@ MeshTac is a full-stack web application designed for Search and Rescue (SAR) ope
 - June 27, 2025: Replaced "Focus Control" with "UAS Control Mode" - created comprehensive multi-drone interface with dropdown selection, telemetry monitoring (voltage, current, altitude, roll, pitch, yaw, heading), and Land/RTH command capabilities using real bridge data
 - June 27, 2025: Implemented professional aviation-style AHRS viewer - replaced basic attitude display with Primary Flight Display (PFD) featuring artificial horizon, heading tape, altitude/speed tapes, aircraft symbol, pitch ladder, and real-time status panel matching commercial aviation HUD standards
 - June 27, 2025: Successfully implemented QR code sharing functionality - added Share View and Fullscreen buttons to both Map and Dashboard pages, created QRDialog component with proper z-index layering, clipboard copy functionality, and user feedback toasts for seamless team collaboration
+- June 27, 2025: Fixed fake drone data issue in UAS Control Mode - removed orphaned drone records from database, enhanced MAVLink service validation to only create drones for genuine hardware connections, improved connection status tracking to prevent fake online drones when no COM bridge is running
 
 ## User Preferences
 
