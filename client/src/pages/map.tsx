@@ -59,14 +59,18 @@ export default function TacticalMapPage() {
 
   const handleShareMap = () => {
     console.log("Share View button clicked!");
+    console.log("QR dialog state before:", qrDialogOpen);
     try {
       // Generate current map URL with current state
       const currentUrl = window.location.href;
       console.log("Current URL:", currentUrl);
+      console.log("Setting QR dialog open to true...");
       setQrDialogOpen(true);
+      console.log("QR dialog state after:", true);
       
       // Also copy to clipboard immediately
       navigator.clipboard.writeText(currentUrl).then(() => {
+        console.log("URL copied to clipboard successfully");
         toast({
           title: "Map URL Copied",
           description: "The map link has been copied to your clipboard",
