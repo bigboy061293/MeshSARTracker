@@ -106,6 +106,7 @@ MeshTac is a full-stack web application designed for Search and Rescue (SAR) ope
 - June 27, 2025: Implemented cloud deployment compatibility - added network-based MAVLink connections (UDP/TCP) for cloud environments where serial ports are unavailable, created comprehensive deployment guide with connection options and troubleshooting
 - June 27, 2025: Created development bridge solution - built com-bridge.js tool to forward local COM4 serial data to cloud environment via UDP, enabling real hardware testing during cloud development with simple `node com-bridge.js` command
 - June 27, 2025: Implemented cloud bridge system - created cloud-bridge.js for HTTP-based connection from local hardware to cloud, added real-time bridge monitoring in Settings page, and comprehensive testing guides for verifying COM4 → cloud data flow
+- June 27, 2025: Replaced "Focus Control" with "UAS Control Mode" - created comprehensive multi-drone interface with dropdown selection, telemetry monitoring (voltage, current, altitude, roll, pitch, yaw, heading), and Land/RTH command capabilities using real bridge data
 
 ## User Preferences
 
