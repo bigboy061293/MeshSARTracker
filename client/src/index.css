@@ -42,6 +42,21 @@
   --text-on-card: hsl(0, 0%, 9%);
 }
 
+/* QR Dialog z-index fix */
+[data-radix-popper-content-wrapper] {
+  z-index: 10000 !important;
+}
+
+/* Dialog overlay styling */
+.dialog-overlay {
+  z-index: 9999 !important;
+}
+
+/* Dialog content styling */
+.dialog-content {
+  z-index: 10000 !important;
+}
+
 .dark {
   --background: hsl(0, 0%, 7.1%);
   --foreground: hsl(0, 0%, 98%);

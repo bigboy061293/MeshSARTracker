@@ -82,7 +82,7 @@ export default function QRDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-surface border-gray-700">
+      <DialogContent className="sm:max-w-md bg-surface border-gray-700 z-[9999] dialog-content">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <QrCode className="h-5 w-5 text-primary" />
