@@ -59,12 +59,23 @@
 
 /* Prevent automatic scrolling */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto !important;
 }
 
 /* Prevent auto-focus scrolling */
 *:focus {
-  scroll-margin: 0;
+  scroll-margin: 0 !important;
+}
+
+/* Prevent any element from triggering auto-scroll */
+* {
+  scroll-margin-top: 0 !important;
+  scroll-margin-bottom: 0 !important;
+}
+
+/* Force immediate scroll position reset */
+body {
+  scroll-behavior: auto !important;
 }
 
 .dark {

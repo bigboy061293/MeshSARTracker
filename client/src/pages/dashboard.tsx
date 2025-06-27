@@ -50,16 +50,6 @@ export default function Dashboard() {
     },
   });
 
-  // Prevent automatic scrolling on page load
-  useEffect(() => {
-    // Reset scroll position to top when component mounts
-    window.scrollTo(0, 0);
-    // Prevent scroll restoration
-    if ('scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
-    }
-  }, []);
-
   // Redirect if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
