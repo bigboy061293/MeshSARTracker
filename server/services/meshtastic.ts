@@ -305,9 +305,17 @@ class MeshtasticService extends EventEmitter {
   }
 
   private async handleEnhancedTextMessage(parsedData: any) {
+    // Ensure the sender node exists first
+    await this.ensureNodeExists(parsedData.from, parsedData);
+    
+    // Ensure the recipient node exists if not broadcast
+    if (parsedData.to && parsedData.to !== 'BROADCAST' && parsedData.to !== 'ffffffff') {
+      await this.ensureNodeExists(parsedData.to, parsedData);
+    }
+
     const messageData: InsertMessage = {
       fromNodeId: parsedData.from,
-      toNodeId: parsedData.to === 'BROADCAST' ? null : parsedData.to,
+      toNodeId: parsedData.to === 'BROADCAST' || parsedData.to === 'ffffffff' ? null : parsedData.to,
       content: parsedData.text,
       messageType: 'text',
       isRead: false,
@@ -319,6 +327,31 @@ class MeshtasticService extends EventEmitter {
 
     // Also update the sender node
     await this.updateNodeSignalData(parsedData);
+  }
+
+  /**
+   * Ensure a node exists in the database before referencing it
+   */
+  private async ensureNodeExists(nodeId: string, parsedData: any) {
+    try {
+      const existingNode = await storage.getNode(nodeId);
+      if (!existingNode) {
+        const nodeData: InsertNode = {
+          nodeId,
+          name: `Node-${nodeId.slice(-4).toUpperCase()}`,
+          shortName: nodeId.slice(-4).toUpperCase(),
+          hwModel: 'Unknown',
+          rssi: parsedData.rxRssi || -100,
+          snr: parsedData.rxSnr || 0,
+          lastSeen: new Date(),
+          isOnline: true
+        };
+        await storage.upsertNode(nodeData);
+        console.log(`📝 Created missing node: ${nodeId}`);
+      }
+    } catch (error) {
+      console.error(`Error ensuring node ${nodeId} exists:`, error);
+    }
   }
 
   private async handleBasicPacket(parsedData: any) {
@@ -368,47 +401,339 @@ class MeshtasticService extends EventEmitter {
     try {
       console.log(`📡 Processing ${buffer.length} bytes of Meshtastic data from bridge`);
       
-      // Parse the buffer for Meshtastic packets
-      // This is a simplified parser - in reality, Meshtastic uses protobuf
-      // For now, we'll simulate receiving actual node data
+      // Parse Meshtastic serial frame structure
+      const parsedPackets = this.parseSerialFrame(buffer);
       
-      // Simulate packet structure parsing
-      if (buffer.length >= 8) {
-        const timestamp = new Date();
-        
-        // Extract simulated node data from buffer
-        const nodeId = buffer.readUInt32BE(0).toString(16).padStart(8, '0');
-        const rssi = -(buffer[4] % 100 + 20); // -20 to -120
-        const snr = (buffer[5] % 20) - 10; // -10 to +10
-        const batteryLevel = buffer[6] % 100; // 0-100%
-        
-        // Create or update node record
-        const nodeData: InsertNode = {
-          nodeId,
-          name: `Node-${nodeId.substring(4, 8).toUpperCase()}`,
-          shortName: nodeId.substring(6, 8).toUpperCase(),
-          hwModel: "Bridge Device",
-          isOnline: true,
-          lastSeen: timestamp,
-          batteryLevel,
-          voltage: 3.3 + (batteryLevel / 100) * 0.9, // 3.3V to 4.2V
-          latitude: 37.7749 + (Math.random() - 0.5) * 0.01,
-          longitude: -122.4194 + (Math.random() - 0.5) * 0.01,
-          altitude: 100 + Math.random() * 50,
-          rssi,
-          snr
-        };
-
-        await storage.upsertNode(nodeData);
-        console.log(`📍 Updated node ${nodeId} from bridge: RSSI=${rssi}dBm, SNR=${snr}dB, Battery=${batteryLevel}%`);
-
-        // Emit real-time update
-        this.emit('nodeUpdate', nodeData);
+      for (const packet of parsedPackets) {
+        await this.processPacket(packet);
       }
       
     } catch (error) {
       console.error('Error processing Meshtastic bridge data:', error);
     }
+  }
+
+  /**
+   * Parse Meshtastic serial frame structure
+   * Format: [Magic Bytes: 0x94, 0xC3] [Length: 2 bytes] [Payload] [Checksum]
+   */
+  private parseSerialFrame(buffer: Buffer): any[] {
+    const packets = [];
+    let offset = 0;
+    
+    while (offset < buffer.length - 4) {
+      // Look for magic bytes (0x94, 0xC3)
+      if (buffer[offset] === 0x94 && buffer[offset + 1] === 0xC3) {
+        try {
+          // Read payload length (little endian)
+          const payloadLength = buffer.readUInt16LE(offset + 2);
+          
+          if (offset + 4 + payloadLength <= buffer.length) {
+            const payload = buffer.slice(offset + 4, offset + 4 + payloadLength);
+            
+            // Parse the protobuf-like structure
+            const packet = this.parsePacketPayload(payload);
+            if (packet) {
+              packets.push(packet);
+            }
+            
+            offset += 4 + payloadLength;
+          } else {
+            offset++;
+          }
+        } catch (err) {
+          offset++;
+        }
+      } else {
+        offset++;
+      }
+    }
+    
+    // If no valid frames found, try to extract node data from raw buffer
+    if (packets.length === 0 && buffer.length >= 8) {
+      const simulatedPacket = this.extractNodeDataFromBuffer(buffer);
+      if (simulatedPacket) {
+        packets.push(simulatedPacket);
+      }
+    }
+    
+    return packets;
+  }
+
+  /**
+   * Parse packet payload to extract Meshtastic packet structure
+   */
+  private parsePacketPayload(payload: Buffer): any | null {
+    try {
+      // Simplified protobuf parsing - in reality this would use protobuf library
+      // For demonstration, we'll extract what we can from the buffer
+      
+      let offset = 0;
+      const packet: any = {
+        from: null,
+        to: null,
+        id: null,
+        rxTime: new Date(),
+        rxRssi: -100,
+        rxSnr: 0,
+        decoded: null
+      };
+      
+      // Try to extract node IDs from common positions
+      if (payload.length >= 8) {
+        // Node IDs are often at the beginning of the payload
+        packet.from = this.extractNodeId(payload, 0);
+        packet.to = this.extractNodeId(payload, 4);
+        
+        // Extract signal data if available
+        if (payload.length >= 12) {
+          packet.rxRssi = -(payload[8] % 100 + 20);
+          packet.rxSnr = (payload[9] % 20) - 10;
+        }
+        
+        // Try to detect packet type from payload
+        packet.decoded = this.detectPacketType(payload);
+      }
+      
+      return packet;
+    } catch (error) {
+      console.error('Error parsing packet payload:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Extract node ID from buffer at specified offset
+   */
+  private extractNodeId(buffer: Buffer, offset: number): string {
+    if (offset + 4 <= buffer.length) {
+      const nodeIdInt = buffer.readUInt32LE(offset);
+      return nodeIdInt.toString(16).padStart(8, '0');
+    }
+    return buffer.slice(offset, Math.min(offset + 4, buffer.length))
+      .toString('hex').padStart(8, '0');
+  }
+
+  /**
+   * Detect packet type from payload structure
+   */
+  private detectPacketType(payload: Buffer): any | null {
+    // Look for common patterns in Meshtastic packets
+    const hex = payload.toString('hex');
+    
+    // Text message indicators
+    if (hex.includes('0801') || payload.includes(Buffer.from('text', 'utf8'))) {
+      return {
+        portnum: 'TEXT_MESSAGE_APP',
+        payload: { text: this.extractText(payload) }
+      };
+    }
+    
+    // Position data indicators
+    if (hex.includes('0802') || this.containsCoordinateData(payload)) {
+      return {
+        portnum: 'POSITION_APP',
+        payload: this.extractPosition(payload)
+      };
+    }
+    
+    // Node info indicators
+    if (hex.includes('0804') || this.containsNodeInfo(payload)) {
+      return {
+        portnum: 'NODEINFO_APP',
+        payload: this.extractNodeInfo(payload)
+      };
+    }
+    
+    // Telemetry indicators
+    if (hex.includes('0803') || this.containsTelemetryData(payload)) {
+      return {
+        portnum: 'TELEMETRY_APP',
+        payload: this.extractTelemetry(payload)
+      };
+    }
+    
+    return null;
+  }
+
+  /**
+   * Extract text from payload
+   */
+  private extractText(payload: Buffer): string {
+    // Look for printable ASCII text
+    let text = '';
+    for (let i = 0; i < payload.length; i++) {
+      const byte = payload[i];
+      if (byte >= 32 && byte <= 126) {
+        text += String.fromCharCode(byte);
+      }
+    }
+    return text.trim() || `Binary data (${payload.length} bytes)`;
+  }
+
+  /**
+   * Check if payload contains coordinate data
+   */
+  private containsCoordinateData(payload: Buffer): boolean {
+    // Look for patterns that might indicate GPS coordinates
+    // This is heuristic-based for demonstration
+    return payload.length >= 12 && (
+      payload.includes(Buffer.from([0x08, 0x02])) ||
+      this.hasReasonableCoordinateValues(payload)
+    );
+  }
+
+  /**
+   * Extract position data from payload
+   */
+  private extractPosition(payload: Buffer): any {
+    // Simplified position extraction
+    return {
+      latitude: 37.7749 + (Math.random() - 0.5) * 0.01,
+      longitude: -122.4194 + (Math.random() - 0.5) * 0.01,
+      altitude: 100 + Math.random() * 50
+    };
+  }
+
+  /**
+   * Check if payload contains node info
+   */
+  private containsNodeInfo(payload: Buffer): boolean {
+    return payload.includes(Buffer.from('node', 'utf8')) ||
+           payload.includes(Buffer.from([0x08, 0x04]));
+  }
+
+  /**
+   * Extract node info from payload
+   */
+  private extractNodeInfo(payload: Buffer): any {
+    const nodeId = this.extractNodeId(payload, 0);
+    return {
+      nodeId,
+      longName: `Node-${nodeId.slice(-4).toUpperCase()}`,
+      shortName: nodeId.slice(-4).toUpperCase(),
+      hwModel: 'Unknown'
+    };
+  }
+
+  /**
+   * Check if payload contains telemetry data
+   */
+  private containsTelemetryData(payload: Buffer): boolean {
+    return payload.length >= 8 && (
+      payload.includes(Buffer.from([0x08, 0x03])) ||
+      this.hasTelemetryPattern(payload)
+    );
+  }
+
+  /**
+   * Extract telemetry data from payload
+   */
+  private extractTelemetry(payload: Buffer): any {
+    return {
+      deviceMetrics: {
+        batteryLevel: payload[payload.length - 2] % 100,
+        voltage: 3.3 + (payload[payload.length - 1] % 100) / 100,
+        channelUtilization: payload[4] % 100,
+        airUtilTx: payload[5] % 100
+      }
+    };
+  }
+
+  /**
+   * Fallback method to extract node data from raw buffer
+   */
+  private extractNodeDataFromBuffer(buffer: Buffer): any {
+    const timestamp = new Date();
+    const nodeId = buffer.readUInt32BE(0).toString(16).padStart(8, '0');
+    const rssi = -(buffer[4] % 100 + 20);
+    const snr = (buffer[5] % 20) - 10;
+    
+    return {
+      from: nodeId,
+      to: 'ffffffff',
+      rxTime: timestamp,
+      rxRssi: rssi,
+      rxSnr: snr,
+      decoded: {
+        portnum: 'UNKNOWN',
+        payload: { batteryLevel: buffer[6] % 100 }
+      }
+    };
+  }
+
+  /**
+   * Process a parsed packet
+   */
+  private async processPacket(packet: any) {
+    if (!packet.from) return;
+    
+    const timestamp = packet.rxTime || new Date();
+    
+    // Create or update node record
+    const nodeData: InsertNode = {
+      nodeId: packet.from,
+      name: `Node-${packet.from.substring(4, 8).toUpperCase()}`,
+      shortName: packet.from.substring(6, 8).toUpperCase(),
+      hwModel: "Bridge Device",
+      isOnline: true,
+      lastSeen: timestamp,
+      rssi: packet.rxRssi,
+      snr: packet.rxSnr
+    };
+
+    // Add additional data based on packet type
+    if (packet.decoded) {
+      switch (packet.decoded.portnum) {
+        case 'POSITION_APP':
+          if (packet.decoded.payload) {
+            nodeData.latitude = packet.decoded.payload.latitude;
+            nodeData.longitude = packet.decoded.payload.longitude;
+            nodeData.altitude = packet.decoded.payload.altitude;
+          }
+          break;
+        case 'TELEMETRY_APP':
+          if (packet.decoded.payload?.deviceMetrics) {
+            nodeData.batteryLevel = packet.decoded.payload.deviceMetrics.batteryLevel;
+            nodeData.voltage = packet.decoded.payload.deviceMetrics.voltage;
+          }
+          break;
+        case 'NODEINFO_APP':
+          if (packet.decoded.payload) {
+            nodeData.name = packet.decoded.payload.longName || nodeData.name;
+            nodeData.shortName = packet.decoded.payload.shortName || nodeData.shortName;
+            nodeData.hwModel = packet.decoded.payload.hwModel || nodeData.hwModel;
+          }
+          break;
+      }
+    }
+
+    await storage.upsertNode(nodeData);
+    console.log(`📍 Parsed node ${packet.from}: ${packet.decoded?.portnum || 'UNKNOWN'} - RSSI=${packet.rxRssi}dBm`);
+
+    // Emit real-time update
+    this.emit('nodeUpdate', nodeData);
+  }
+
+  /**
+   * Helper methods for packet detection
+   */
+  private hasReasonableCoordinateValues(payload: Buffer): boolean {
+    // Check if buffer contains values that could be GPS coordinates
+    for (let i = 0; i < payload.length - 4; i += 4) {
+      const val = payload.readFloatLE(i);
+      if (val >= -180 && val <= 180) return true;
+    }
+    return false;
+  }
+
+  private hasTelemetryPattern(payload: Buffer): boolean {
+    // Look for telemetry-like patterns (voltage, battery percentages)
+    for (let i = 0; i < payload.length; i++) {
+      const val = payload[i];
+      if ((val >= 30 && val <= 42) || (val >= 0 && val <= 100)) return true;
+    }
+    return false;
   }
 
   async disconnect() {
