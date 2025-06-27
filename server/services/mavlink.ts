@@ -177,30 +177,213 @@ class MAVLinkService extends EventEmitter {
   }
 
   private async establishConnection() {
-    // In a real implementation, this would:
-    // 1. Create serial/UDP/TCP connection based on configuration
-    // 2. Set up message parsing for MAVLink protocol
-    // 3. Handle connection events
+    console.log(`🔌 Establishing MAVLink connection to: ${this.connectionString}`);
 
-    console.log(`Connecting to drone via ${this.connectionString}`);
+    try {
+      // Parse connection string to determine type
+      if (
+        this.connectionString.startsWith("serial:") ||
+        this.connectionString.startsWith("COM")
+      ) {
+        this.connectionType = "serial";
+        await this.establishSerialConnection();
+      } else if (this.connectionString.startsWith("tcp:")) {
+        this.connectionType = "tcp";
+        await this.establishTcpConnection();
+      } else {
+        this.connectionType = "udp";
+        await this.establishUdpConnection();
+      }
 
-    // Parse connection string to determine type
-    if (
-      this.connectionString.startsWith("serial:") ||
-      this.connectionString.startsWith("COM")
-    ) {
-      this.connectionType = "serial";
-    } else if (this.connectionString.startsWith("tcp:")) {
-      this.connectionType = "tcp";
-    } else {
-      this.connectionType = "udp";
+      console.log(`✅ MAVLink connection established via ${this.connectionType}: ${this.connectionString}`);
+    } catch (error) {
+      console.error(`❌ Failed to establish MAVLink connection:`, error);
+      throw error;
     }
+  }
 
-    // Simulate connection establishment
-    this.connection = {
-      connected: true,
-      connectionString: this.connectionString,
+  private async establishSerialConnection() {
+    try {
+      // Extract port from connection string (e.g., "COM4", "serial:COM4", "serial:/dev/ttyUSB0")
+      let portPath = this.connectionString;
+      if (portPath.startsWith("serial:")) {
+        portPath = portPath.substring(7); // Remove "serial:" prefix
+      }
+
+      console.log(`📡 Opening serial port: ${portPath}`);
+
+      // Create SerialPort connection with MAVLink-compatible settings
+      this.connection = new SerialPort({
+        path: portPath,
+        baudRate: 57600, // Standard MAVLink baud rate
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        autoOpen: false
+      });
+
+      // Setup MAVLink parser
+      this.setupMAVLinkParser();
+
+      // Open the port
+      await new Promise<void>((resolve, reject) => {
+        this.connection.open((error: Error | null) => {
+          if (error) {
+            reject(new Error(`Failed to open serial port ${portPath}: ${error.message}`));
+          } else {
+            console.log(`✅ Serial port ${portPath} opened successfully`);
+            resolve();
+          }
+        });
+      });
+
+      // Setup event handlers
+      this.connection.on('data', (data: Buffer) => {
+        if (this.mavlinkParser) {
+          this.mavlinkParser.parseBuffer(data);
+        }
+      });
+
+      this.connection.on('error', (error: Error) => {
+        console.error(`❌ Serial port error:`, error);
+        this.emit('connectionError', error);
+      });
+
+      this.connection.on('close', () => {
+        console.log(`🔌 Serial port ${portPath} closed`);
+        this.connected = false;
+        this.deviceConnected = false;
+      });
+
+    } catch (error) {
+      throw new Error(`Serial connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async establishUdpConnection() {
+    try {
+      // Parse UDP connection string (e.g., "udp:127.0.0.1:14550")
+      const url = this.connectionString.replace("udp:", "");
+      const [host, port] = url.split(":");
+      const targetPort = parseInt(port) || 14550;
+      const targetHost = host || "127.0.0.1";
+
+      console.log(`📡 Creating UDP connection to ${targetHost}:${targetPort}`);
+
+      this.connection = createSocket('udp4');
+      this.setupMAVLinkParser();
+
+      this.connection.on('message', (data: Buffer) => {
+        if (this.mavlinkParser) {
+          this.mavlinkParser.parseBuffer(data);
+        }
+      });
+
+      this.connection.on('error', (error: Error) => {
+        console.error(`❌ UDP connection error:`, error);
+        this.emit('connectionError', error);
+      });
+
+      // Store connection details for sending data
+      this.connection.targetHost = targetHost;
+      this.connection.targetPort = targetPort;
+
+      console.log(`✅ UDP connection established to ${targetHost}:${targetPort}`);
+    } catch (error) {
+      throw new Error(`UDP connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async establishTcpConnection() {
+    try {
+      // Parse TCP connection string (e.g., "tcp:127.0.0.1:5760")
+      const url = this.connectionString.replace("tcp:", "");
+      const [host, port] = url.split(":");
+      const targetPort = parseInt(port) || 5760;
+      const targetHost = host || "127.0.0.1";
+
+      console.log(`📡 Creating TCP connection to ${targetHost}:${targetPort}`);
+
+      this.connection = createUdpConnection(targetPort, targetHost);
+      this.setupMAVLinkParser();
+
+      this.connection.on('data', (data: Buffer) => {
+        if (this.mavlinkParser) {
+          this.mavlinkParser.parseBuffer(data);
+        }
+      });
+
+      this.connection.on('error', (error: Error) => {
+        console.error(`❌ TCP connection error:`, error);
+        this.emit('connectionError', error);
+      });
+
+      this.connection.on('close', () => {
+        console.log(`🔌 TCP connection to ${targetHost}:${targetPort} closed`);
+        this.connected = false;
+        this.deviceConnected = false;
+      });
+
+      console.log(`✅ TCP connection established to ${targetHost}:${targetPort}`);
+    } catch (error) {
+      throw new Error(`TCP connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private setupMAVLinkParser() {
+    try {
+      // Initialize MAVLink parser with proper message handling
+      // The mavlink library may have different export structures
+      const MAVLinkConstructor = mavlink.MAVLink || mavlink.default?.MAVLink || mavlink;
+      
+      if (typeof MAVLinkConstructor === 'function') {
+        this.mavlinkParser = new MAVLinkConstructor(null, 255, 0);
+      } else {
+        // Alternative initialization for different library versions
+        this.mavlinkParser = mavlink.createMAVLink ? mavlink.createMAVLink(255, 0) : mavlink;
+      }
+      
+      if (this.mavlinkParser && typeof this.mavlinkParser.on === 'function') {
+        this.mavlinkParser.on('message', (message: any) => {
+          this.handleIncomingMAVLinkMessage(message);
+        });
+
+        this.mavlinkParser.on('error', (error: Error) => {
+          console.error(`❌ MAVLink parser error:`, error);
+        });
+      }
+
+      console.log(`🔧 MAVLink parser initialized`);
+    } catch (error) {
+      console.error(`❌ Failed to setup MAVLink parser:`, error);
+      throw error;
+    }
+  }
+
+  private handleIncomingMAVLinkMessage(message: any) {
+    const mavlinkMessage: MAVLinkMessage = {
+      system_id: message.header.srcSystem,
+      component_id: message.header.srcComponent,
+      message_id: message.header.msgid,
+      payload: message
     };
+
+    // Log incoming message
+    console.log(`📥 MAVLink Message Received: {
+  system_id: ${mavlinkMessage.system_id},
+  component_id: ${mavlinkMessage.component_id},
+  message_id: ${mavlinkMessage.message_id},
+  message_name: '${this.getMessageName(mavlinkMessage.message_id)}',
+  timestamp: '${new Date().toISOString()}',
+  direction: 'INCOMING'
+}`);
+
+    // Update device connection status
+    this.deviceConnected = true;
+    this.lastDeviceHeartbeat = Date.now();
+
+    // Process the message
+    this.handleMAVLinkMessage(mavlinkMessage);
   }
 
   async updateConnection(connectionString: string): Promise<{ success: boolean; message: string; details?: any }> {
@@ -803,28 +986,82 @@ class MAVLinkService extends EventEmitter {
 
   private startHeartbeat() {
     this.heartbeatInterval = setInterval(() => {
-      // In a real implementation, send heartbeat to maintain connection
-      const heartbeatMessage = {
+      if (this.useSimulation) {
+        // Simulation mode - just log for testing
+        const heartbeatMessage = {
+          system_id: 1,
+          component_id: 1,
+          message_id: 0,
+          message_name: "HEARTBEAT",
+          payload: {
+            type: 6, // MAV_TYPE_GCS
+            autopilot: 8, // MAV_AUTOPILOT_INVALID
+            base_mode: 0,
+            custom_mode: 0,
+            system_status: 4, // MAV_STATE_ACTIVE
+            mavlink_version: 3,
+          },
+        };
+
+        console.log("📤 MAVLink Message Sent:", {
+          ...heartbeatMessage,
+          timestamp: new Date().toISOString(),
+          direction: "OUTGOING",
+        });
+      } else {
+        // Real device mode - send actual MAVLink heartbeat
+        this.sendHeartbeatMessage();
+      }
+    }, 1000);
+  }
+
+  private sendHeartbeatMessage() {
+    if (!this.connection || !this.mavlinkParser) {
+      return;
+    }
+
+    try {
+      // Create MAVLink heartbeat message
+      const heartbeatMsg = new mavlink.messages.heartbeat(
+        6, // MAV_TYPE_GCS
+        8, // MAV_AUTOPILOT_INVALID
+        0, // base_mode
+        0, // custom_mode
+        4, // MAV_STATE_ACTIVE
+        3  // mavlink_version
+      );
+
+      // Pack the message
+      const buffer = heartbeatMsg.pack(this.mavlinkParser);
+
+      // Send based on connection type
+      if (this.connectionType === "serial" && this.connection.write) {
+        this.connection.write(buffer);
+      } else if (this.connectionType === "udp" && this.connection.send) {
+        this.connection.send(buffer, this.connection.targetPort, this.connection.targetHost);
+      } else if (this.connectionType === "tcp" && this.connection.write) {
+        this.connection.write(buffer);
+      }
+
+      console.log("📤 MAVLink Message Sent:", {
         system_id: 1,
         component_id: 1,
         message_id: 0,
         message_name: "HEARTBEAT",
         payload: {
-          type: 6, // MAV_TYPE_GCS
-          autopilot: 8, // MAV_AUTOPILOT_INVALID
+          type: 6,
+          autopilot: 8,
           base_mode: 0,
           custom_mode: 0,
-          system_status: 4, // MAV_STATE_ACTIVE
+          system_status: 4,
           mavlink_version: 3,
         },
-      };
-
-      console.log("📤 MAVLink Message Sent:", {
-        ...heartbeatMessage,
         timestamp: new Date().toISOString(),
         direction: "OUTGOING",
       });
-    }, 1000);
+    } catch (error) {
+      console.error("❌ Failed to send heartbeat:", error);
+    }
   }
 
   private startTelemetryUpdates() {
