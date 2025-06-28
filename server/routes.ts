@@ -149,8 +149,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test endpoint to create sample nodes for development
-  app.post('/api/nodes/create-test', isAuthenticated, async (req, res) => {
+  // Test endpoint to create sample nodes for development (public for debugging)
+  app.post('/api/test/create-nodes', async (req, res) => {
     try {
       console.log('🧪 Creating test nodes...');
       const testNodes = [
@@ -236,9 +236,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ success: true, nodes: createdNodes, count: createdNodes.length });
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Error creating test nodes:", error);
-      res.status(500).json({ message: "Failed to create test nodes", error: error.message });
+      res.status(500).json({ message: "Failed to create test nodes", error: error?.message || 'Unknown error' });
     }
   });
 

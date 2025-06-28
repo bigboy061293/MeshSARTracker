@@ -425,6 +425,7 @@ export default function NodesControl() {
   
   const webSerial = useWebSerialMeshtastic();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch nodes data
   const { data: nodes = [], isLoading: nodesLoading } = useQuery<Node[]>({
@@ -777,27 +778,31 @@ export default function NodesControl() {
                 <Button 
                   onClick={async () => {
                     try {
-                      console.log('🧪 Creating test nodes...');
-                      const response = await apiRequest("/api/nodes/create-test", "POST", {});
-                      console.log('✅ Test nodes created:', response);
-                      queryClient.invalidateQueries({ queryKey: ["/api/nodes"] });
+                      console.log('🧪 [TEST] Button clicked - Creating test nodes...');
+                      const response = await apiRequest("/api/test/create-nodes", "POST", {});
+                      console.log('✅ [TEST] API Response:', response);
+                      
+                      // Force refresh the nodes query
+                      await queryClient.invalidateQueries({ queryKey: ["/api/nodes"] });
+                      await queryClient.refetchQueries({ queryKey: ["/api/nodes"] });
+                      
                       toast({
                         title: "Test Nodes Created",
-                        description: `Created ${response.count} test nodes successfully`,
+                        description: `Created ${(response as any).count || 'some'} test nodes successfully`,
                       });
-                    } catch (error) {
-                      console.error('❌ Failed to create test nodes:', error);
+                    } catch (error: any) {
+                      console.error('❌ [TEST] Failed to create test nodes:', error);
                       toast({
                         title: "Error",
-                        description: "Failed to create test nodes",
+                        description: `Failed to create test nodes: ${error.message || 'Unknown error'}`,
                         variant: "destructive",
                       });
                     }
                   }}
                   variant="outline"
-                  className="w-fit"
+                  className="w-fit bg-yellow-100 hover:bg-yellow-200"
                 >
-                  Create Test Nodes
+                  🧪 Create Test Nodes
                 </Button>
                 <div className="flex-1">
                   <Input
