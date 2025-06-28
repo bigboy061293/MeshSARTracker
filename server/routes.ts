@@ -131,6 +131,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/nodes', isAuthenticated, async (req, res) => {
     try {
       const nodes = await storage.getAllNodes();
+      console.log('🔍 [BACKEND] getAllNodes() returned:', nodes.length, 'nodes');
+      console.log('🔍 [BACKEND] Sample node:', nodes[0] || 'none');
       res.json(nodes);
     } catch (error) {
       console.error("Error fetching nodes:", error);
@@ -146,6 +148,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating node:", error);
       res.status(500).json({ message: "Failed to create node" });
+    }
+  });
+
+  // Debug endpoint to check nodes in database (public for debugging)
+  app.get('/api/test/nodes', async (req, res) => {
+    try {
+      const nodes = await storage.getAllNodes();
+      console.log('🔍 [DEBUG] Found nodes in database:', nodes.length);
+      res.json({ success: true, nodes, count: nodes.length });
+    } catch (error) {
+      console.error('❌ [DEBUG] Error fetching nodes:', error);
+      res.status(500).json({ success: false, error: error.message });
     }
   });
 

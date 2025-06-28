@@ -433,6 +433,13 @@ export default function NodesControl() {
     refetchInterval: 3000, // Refresh every 3 seconds
   });
 
+  // Debug logging for nodes data
+  useEffect(() => {
+    console.log('🔍 [DEBUG] Nodes data updated:', nodes);
+    console.log('🔍 [DEBUG] Nodes count:', nodes?.length || 0);
+    console.log('🔍 [DEBUG] Loading state:', nodesLoading);
+  }, [nodes, nodesLoading]);
+
   // Fetch bridge status
   const { data: bridgeStatus } = useQuery<{ meshtastic?: BridgeStatus }>({
     queryKey: ["/api/bridge/status"],
