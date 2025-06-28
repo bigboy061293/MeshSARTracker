@@ -735,17 +735,18 @@ class MAVLinkService extends EventEmitter {
 
     // Only create/update drone records for real hardware connections or active simulation
     if ((!this.useSimulation && this.deviceConnected) || (this.useSimulation && this.connected)) {
-      // Ensure drone exists in database
+      // Use system ID as primary key - ensure drone exists in database
       let drone = await storage.getDrone(systemId);
       if (!drone) {
         const newDroneData: InsertDrone = {
-          name: this.useSimulation ? `SIM-${systemId.toString().padStart(2, "0")}` : `UAV-${systemId.toString().padStart(2, "0")}`,
-          serialNumber: `${this.useSimulation ? 'SIM' : 'SN'}${systemId}${Date.now()}`,
+          id: systemId, // Use system ID as the primary key
+          name: `UAS-${systemId}`,
+          serialNumber: `SN${systemId}${Date.now().toString().slice(-6)}`,
           model: this.useSimulation ? "Simulated" : this.getAutopilotName(payload.autopilot),
           isConnected: true,
         };
         drone = await storage.upsertDrone(newDroneData);
-        console.log(`🆕 Created ${this.useSimulation ? 'simulated' : 'real'} drone record: ${drone.name} (System ID: ${systemId})`);
+        console.log(`🆕 Created drone record: UAS-${systemId} (System ID: ${systemId})`);
       }
 
       // Update drone status with current telemetry

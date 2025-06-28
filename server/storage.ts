@@ -168,7 +168,7 @@ export class DatabaseStorage implements IStorage {
       .insert(drones)
       .values({ ...droneData, updatedAt: new Date() })
       .onConflictDoUpdate({
-        target: drones.serialNumber,
+        target: drones.id,
         set: {
           ...droneData,
           updatedAt: new Date(),

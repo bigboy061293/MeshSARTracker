@@ -71,7 +71,7 @@ export const messages = pgTable("messages", {
 
 // Drones
 export const drones = pgTable("drones", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey(), // Use system ID as primary key
   name: varchar("name").notNull(),
   serialNumber: varchar("serial_number").unique(),
   model: varchar("model"),
@@ -202,7 +202,6 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 
 export const insertDroneSchema = createInsertSchema(drones).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 });
