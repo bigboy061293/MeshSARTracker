@@ -77,15 +77,44 @@ function useWebSerialMeshtastic() {
       
       // Request a port and open a connection
       // Note: The browser will show a device picker dialog
-      const selectedPort = await navigator.serial.requestPort({
-        filters: [
-          { usbVendorId: 0x10C4, usbProductId: 0xEA60 }, // CP2102 USB to UART Bridge
-          { usbVendorId: 0x1A86, usbProductId: 0x7523 }, // CH340 USB to Serial
-          { usbVendorId: 0x0403, usbProductId: 0x6001 }, // FTDI USB Serial
-          { usbVendorId: 0x1B4F, usbProductId: 0x9D50 }, // SparkFun Pro Micro
-          { usbVendorId: 0x239A, usbProductId: 0x8014 }, // Adafruit ESP32-S2
-        ]
-      });
+      // Try comprehensive filter list first, then fallback to no filters if needed
+      let selectedPort;
+      try {
+        selectedPort = await navigator.serial.requestPort({
+          filters: [
+            // Silicon Labs CP210x (most common Meshtastic devices)
+            { usbVendorId: 0x10C4, usbProductId: 0xEA60 },
+            
+            // QinHeng Electronics CH340/CH341 (Tiny CDC devices)
+            { usbVendorId: 0x1A86, usbProductId: 0x7523 }, // CH340
+            { usbVendorId: 0x1A86, usbProductId: 0x55D4 }, // CH341
+            { usbVendorId: 0x1A86 }, // All QinHeng devices
+            
+            // FTDI USB Serial
+            { usbVendorId: 0x0403, usbProductId: 0x6001 },
+            { usbVendorId: 0x0403 }, // All FTDI devices
+            
+            // Adafruit devices
+            { usbVendorId: 0x239A }, // All Adafruit devices
+            
+            // Espressif native USB (ESP32-S2/S3/C3 with native USB)
+            { usbVendorId: 0x303A },
+            
+            // SparkFun devices
+            { usbVendorId: 0x1B4F, usbProductId: 0x9D50 },
+            
+            // Arduino devices
+            { usbVendorId: 0x2341 },
+            
+            // RAK Wireless devices
+            { usbVendorId: 0x2E8A },
+          ]
+        });
+      } catch (filterError) {
+        // If filters fail, try without filters (shows all available devices)
+        console.log('Filtered request failed, trying without filters...');
+        selectedPort = await navigator.serial.requestPort();
+      }
 
       if (!selectedPort) {
         throw new Error("No device selected");
@@ -403,8 +432,8 @@ export default function NodesControl() {
                       <strong>How to connect:</strong><br/>
                       1. Connect your Meshtastic device via USB cable<br/>
                       2. Click "Connect Device" and select your device from the browser dialog<br/>
-                      3. Supports ESP32, T-Beam, Heltec, and other Meshtastic devices<br/>
-                      <em>Note: The browser will show a permission dialog to select the serial port.</em>
+                      3. Supports all common devices: ESP32, T-Beam, Heltec, RAK, Tiny CDC (CH340/CH341), and native USB devices<br/>
+                      <em>Note: If your device doesn't appear in the filtered list, the system will automatically show all available serial devices.</em>
                     </AlertDescription>
                   </Alert>
                 </div>
