@@ -149,19 +149,36 @@ function useWebSerialMeshtastic() {
 
   const processReceivedData = useCallback(async (data: Uint8Array) => {
     try {
-      console.log('Received data from device:', Array.from(data));
+      // Convert to text for easier parsing
+      const text = new TextDecoder().decode(data);
+      const timestamp = new Date().toISOString();
       
-      // Parse device info responses locally
+      console.log(`📥 [${timestamp}] RAW DATA:`, Array.from(data));
+      console.log(`📄 [${timestamp}] TEXT DATA:`, text);
+      
+      // Look for nodeDB information patterns
+      if (text.includes('Node')) {
+        console.log(`🔍 [${timestamp}] DETECTED NODE INFO:`, text);
+      }
+      
+      if (text.includes('!')) {
+        console.log(`📡 [${timestamp}] DETECTED NODE ID PATTERN:`, text);
+      }
+      
+      // Parse specific command responses
       const parsedInfo = parseDeviceResponse(data);
       if (parsedInfo) {
-        console.log('Parsed device info:', parsedInfo);
+        console.log(`✅ [${timestamp}] PARSED RESPONSE:`, parsedInfo);
         
         if (parsedInfo.type === 'device_info') {
           setDeviceInfo(parsedInfo.data);
+          console.log(`📊 [${timestamp}] DEVICE INFO UPDATED:`, parsedInfo.data);
         } else if (parsedInfo.type === 'mesh_nodes') {
           setMeshNodes(parsedInfo.data);
+          console.log(`🌐 [${timestamp}] MESH NODES UPDATED:`, parsedInfo.data);
         } else if (parsedInfo.type === 'preferences') {
           setDevicePreferences(parsedInfo.data);
+          console.log(`⚙️ [${timestamp}] PREFERENCES UPDATED:`, parsedInfo.data);
         }
       }
       
@@ -174,34 +191,92 @@ function useWebSerialMeshtastic() {
       // Refresh nodes data
       queryClient.invalidateQueries({ queryKey: ["/api/nodes"] });
     } catch (error) {
-      console.error('Data processing error:', error);
+      console.error('❌ Data processing error:', error);
     }
   }, [queryClient]);
 
   const parseDeviceResponse = (data: Uint8Array) => {
     try {
-      // Convert to text for simple parsing (in real implementation, use protobuf)
       const text = new TextDecoder().decode(data);
-      console.log('Device response text:', text);
+      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
       
-      // Mock parsing for demonstration - in real app, decode protobuf
-      if (text.includes('myNodeNum') || text.includes('deviceId')) {
+      // Look for nodeDB patterns
+      if (text.includes('nodeDB') || text.includes('nodes:') || text.includes('Node:')) {
+        console.log('🌐 [NODEDB] Found node database response:', lines);
+        
+        const nodes: any = {};
+        let currentNode: any = null;
+        
+        for (const line of lines) {
+          // Look for node ID patterns like "!abcd1234"
+          const nodeIdMatch = line.match(/!([a-f0-9]{8})/);
+          if (nodeIdMatch) {
+            const nodeId = nodeIdMatch[1];
+            currentNode = { nodeId: nodeIdMatch[0], shortName: '', longName: '', lastSeen: new Date().toISOString() };
+            nodes[nodeId] = currentNode;
+            console.log('📡 [NODEDB] Found node ID:', nodeIdMatch[0]);
+          }
+          
+          // Parse node details
+          if (currentNode) {
+            if (line.includes('Short:')) {
+              currentNode.shortName = line.split('Short:')[1]?.trim() || '';
+            }
+            if (line.includes('Long:')) {
+              currentNode.longName = line.split('Long:')[1]?.trim() || '';
+            }
+            if (line.includes('SNR:')) {
+              currentNode.snr = parseFloat(line.split('SNR:')[1]?.trim() || '0');
+            }
+            if (line.includes('RSSI:')) {
+              currentNode.rssi = parseInt(line.split('RSSI:')[1]?.trim() || '0');
+            }
+          }
+        }
+        
+        if (Object.keys(nodes).length > 0) {
+          return {
+            type: 'mesh_nodes',
+            data: nodes
+          };
+        }
+      }
+      
+      // Look for device info patterns
+      if (text.includes('My info:') || text.includes('deviceId') || text.includes('myNodeNum')) {
+        console.log('📱 [DEVICE] Found device info response:', lines);
+        
+        const deviceInfo: any = {
+          lastResponse: new Date().toISOString()
+        };
+        
+        for (const line of lines) {
+          if (line.includes('myNodeNum:')) {
+            deviceInfo.myNodeNum = line.split(':')[1]?.trim();
+          }
+          if (line.includes('deviceId:')) {
+            deviceInfo.deviceId = line.split(':')[1]?.trim();
+          }
+          if (line.includes('firmware:')) {
+            deviceInfo.firmwareVersion = line.split(':')[1]?.trim();
+          }
+          if (line.includes('hwModel:')) {
+            deviceInfo.hwModel = line.split(':')[1]?.trim();
+          }
+          if (line.includes('rebootCount:')) {
+            deviceInfo.rebootCount = parseInt(line.split(':')[1]?.trim() || '0');
+          }
+        }
+        
         return {
           type: 'device_info',
-          data: {
-            myNodeNum: Math.floor(Math.random() * 4000000000),
-            deviceId: 'WebSerial-Device',
-            firmwareVersion: '2.6.11',
-            hwModel: 'SEEED_XIAO_S3',
-            rebootCount: 1,
-            lastResponse: new Date().toISOString()
-          }
+          data: deviceInfo
         };
       }
       
       return null;
     } catch (error) {
-      console.error('Response parsing error:', error);
+      console.error('❌ Response parsing error:', error);
       return null;
     }
   };
@@ -213,14 +288,23 @@ function useWebSerialMeshtastic() {
       const writer = port.writable.getWriter();
       const encoder = new TextEncoder();
       
-      // Simple text command for testing
-      const commandData = encoder.encode(command + '\r\n');
-      await writer.write(commandData);
-      writer.releaseLock();
+      // Send different command formats for better compatibility
+      const commands = [
+        command + '\r\n',
+        command + '\n',
+        command + '\r'
+      ];
       
-      console.log(`Sent command: ${command}`);
+      for (const cmd of commands) {
+        const commandData = encoder.encode(cmd);
+        await writer.write(commandData);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay between attempts
+      }
+      
+      writer.releaseLock();
+      console.log(`📤 Sent Meshtastic command: ${command}`);
     } catch (error) {
-      console.error('Error sending command:', error);
+      console.error('❌ Error sending command:', error);
     }
   }, []);
 
@@ -232,9 +316,22 @@ function useWebSerialMeshtastic() {
     
     const interval = setInterval(async () => {
       if (port && isConnected) {
-        // Send status request commands
+        console.log('🔄 [POLLING] Requesting nodeDB and device info...');
+        
+        // Request node database and device information
+        await sendMeshtasticCommand(port, '--nodes');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
         await sendMeshtasticCommand(port, '--info');
-        console.log('Polling device for updated info...');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        await sendMeshtasticCommand(port, '--get-canned-message');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        await sendMeshtasticCommand(port, '--get-ringtone');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        console.log('📊 [POLLING] Commands sent, waiting for responses...');
       }
     }, 2000); // Poll every 2 seconds
     
@@ -243,8 +340,11 @@ function useWebSerialMeshtastic() {
     // Initial request after 1 second
     setTimeout(async () => {
       if (port && isConnected) {
+        console.log('🚀 [INITIAL] Starting nodeDB polling...');
+        await sendMeshtasticCommand(port, '--nodes');
+        await new Promise(resolve => setTimeout(resolve, 300));
         await sendMeshtasticCommand(port, '--info');
-        console.log('Initial device info request sent');
+        console.log('✅ [INITIAL] Initial commands sent');
       }
     }, 1000);
   }, [pollingInterval, isConnected, sendMeshtasticCommand]);
