@@ -18,19 +18,21 @@ export default function DroneControl() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [selectedDroneId, setSelectedDroneId] = useState<string>("");
 
-  // Fetch all drones
-  const { data: drones = [], isLoading: dronesLoading } = useQuery({
+  // Fetch all drones at 1Hz (1000ms)
+  const { data: drones = [], isLoading: dronesLoading } = useQuery<Drone[]>({
     queryKey: ['/api/drones'],
-    refetchInterval: 2000, // Update every 2 seconds
+    refetchInterval: 1000, // Update every 1 second (1Hz)
+    staleTime: 0, // Always consider data stale for real-time updates
   });
 
   // Get selected drone details
   const selectedDrone = drones.find((drone: Drone) => drone.id.toString() === selectedDroneId);
 
-  // Connection status query
-  const { data: connectionStatus } = useQuery({
+  // Connection status query at 1Hz
+  const { data: connectionStatus } = useQuery<any>({
     queryKey: ['/api/mavlink/connection-status'],
-    refetchInterval: 5000,
+    refetchInterval: 1000, // Update every 1 second (1Hz)
+    staleTime: 0, // Always consider data stale for real-time updates
   });
 
   // Command mutation for Land/RTH

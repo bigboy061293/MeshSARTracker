@@ -30,10 +30,11 @@ export default function WebSerialUAS() {
   const [selectedBaudRate, setSelectedBaudRate] = useState(57600);
   const [selectedDrone, setSelectedDrone] = useState<number>(1);
 
-  // Fetch drones data to populate dropdown
+  // Fetch drones data to populate dropdown at 1Hz
   const { data: drones = [] } = useQuery<Drone[]>({
     queryKey: ['/api/drones'],
-    refetchInterval: 3000
+    refetchInterval: 1000, // Update every 1 second (1Hz)
+    staleTime: 0, // Always consider data stale for real-time updates
   });
 
   useEffect(() => {
