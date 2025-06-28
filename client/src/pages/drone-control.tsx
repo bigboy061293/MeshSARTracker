@@ -18,11 +18,15 @@ export default function DroneControl() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [selectedDroneId, setSelectedDroneId] = useState<string>("");
 
-  // Fetch all drones at 1Hz (1000ms)
+  // Fetch all drones at 1Hz (1000ms) with aggressive cache settings
   const { data: drones = [], isLoading: dronesLoading } = useQuery<Drone[]>({
     queryKey: ['/api/drones'],
     refetchInterval: 1000, // Update every 1 second (1Hz)
     staleTime: 0, // Always consider data stale for real-time updates
+    gcTime: 0, // Don't cache old data
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   // Get selected drone details
@@ -239,12 +243,12 @@ export default function DroneControl() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-secondary">Relative:</span>
-                  <span className="font-mono text-dark">{formatValue(selectedDrone.relativeAlt, "m")}</span>
+                  <span className="font-mono text-dark">{formatValue(selectedDrone.altitudeRelative, "m")}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-secondary">GPS Fix:</span>
-                  <Badge variant={selectedDrone.gpsFixType >= 3 ? "default" : "destructive"}>
-                    {selectedDrone.gpsFixType >= 3 ? "3D Fix" : "No Fix"}
+                  <Badge variant={(selectedDrone.gpsFixType || 0) >= 3 ? "default" : "destructive"}>
+                    {(selectedDrone.gpsFixType || 0) >= 3 ? "3D Fix" : "No Fix"}
                   </Badge>
                 </div>
               </CardContent>
@@ -292,13 +296,13 @@ export default function DroneControl() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-secondary">Armed:</span>
-                  <Badge variant={selectedDrone.isArmed ? "destructive" : "default"}>
-                    {selectedDrone.isArmed ? "Armed" : "Disarmed"}
+                  <Badge variant={selectedDrone.armed ? "destructive" : "default"}>
+                    {selectedDrone.armed ? "Armed" : "Disarmed"}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-secondary">System ID:</span>
-                  <span className="font-mono text-dark">{selectedDrone.systemId}</span>
+                  <span className="font-mono text-dark">{selectedDrone.id}</span>
                 </div>
               </CardContent>
             </Card>
