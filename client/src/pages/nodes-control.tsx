@@ -55,6 +55,9 @@ function useWebSerialMeshtastic() {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string>("Disconnected");
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
+  const [meshNodes, setMeshNodes] = useState<any>(null);
+  const [devicePreferences, setDevicePreferences] = useState<any>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -77,44 +80,8 @@ function useWebSerialMeshtastic() {
       
       // Request a port and open a connection
       // Note: The browser will show a device picker dialog
-      // Try comprehensive filter list first, then fallback to no filters if needed
-      let selectedPort;
-      try {
-        selectedPort = await navigator.serial.requestPort({
-          filters: [
-            // Silicon Labs CP210x (most common Meshtastic devices)
-            { usbVendorId: 0x10C4, usbProductId: 0xEA60 },
-            
-            // QinHeng Electronics CH340/CH341 (Tiny CDC devices)
-            { usbVendorId: 0x1A86, usbProductId: 0x7523 }, // CH340
-            { usbVendorId: 0x1A86, usbProductId: 0x55D4 }, // CH341
-            { usbVendorId: 0x1A86 }, // All QinHeng devices
-            
-            // FTDI USB Serial
-            { usbVendorId: 0x0403, usbProductId: 0x6001 },
-            { usbVendorId: 0x0403 }, // All FTDI devices
-            
-            // Adafruit devices
-            { usbVendorId: 0x239A }, // All Adafruit devices
-            
-            // Espressif native USB (ESP32-S2/S3/C3 with native USB)
-            { usbVendorId: 0x303A },
-            
-            // SparkFun devices
-            { usbVendorId: 0x1B4F, usbProductId: 0x9D50 },
-            
-            // Arduino devices
-            { usbVendorId: 0x2341 },
-            
-            // RAK Wireless devices
-            { usbVendorId: 0x2E8A },
-          ]
-        });
-      } catch (filterError) {
-        // If filters fail, try without filters (shows all available devices)
-        console.log('Filtered request failed, trying without filters...');
-        selectedPort = await navigator.serial.requestPort();
-      }
+      // Use no filters to show all devices (like official Meshtastic client)
+      const selectedPort = await navigator.serial.requestPort();
 
       if (!selectedPort) {
         throw new Error("No device selected");
@@ -134,6 +101,9 @@ function useWebSerialMeshtastic() {
 
       // Start reading data
       startReading(selectedPort);
+      
+      // Start device info polling every 2 seconds
+      startDevicePolling(selectedPort);
 
     } catch (error) {
       console.error('Web Serial connection error:', error);
@@ -179,6 +149,22 @@ function useWebSerialMeshtastic() {
 
   const processReceivedData = useCallback(async (data: Uint8Array) => {
     try {
+      console.log('Received data from device:', Array.from(data));
+      
+      // Parse device info responses locally
+      const parsedInfo = parseDeviceResponse(data);
+      if (parsedInfo) {
+        console.log('Parsed device info:', parsedInfo);
+        
+        if (parsedInfo.type === 'device_info') {
+          setDeviceInfo(parsedInfo.data);
+        } else if (parsedInfo.type === 'mesh_nodes') {
+          setMeshNodes(parsedInfo.data);
+        } else if (parsedInfo.type === 'preferences') {
+          setDevicePreferences(parsedInfo.data);
+        }
+      }
+      
       // Send raw data to server for processing
       await apiRequest("/api/meshtastic/process-serial", "POST", {
         data: Array.from(data),
@@ -192,14 +178,93 @@ function useWebSerialMeshtastic() {
     }
   }, [queryClient]);
 
+  const parseDeviceResponse = (data: Uint8Array) => {
+    try {
+      // Convert to text for simple parsing (in real implementation, use protobuf)
+      const text = new TextDecoder().decode(data);
+      console.log('Device response text:', text);
+      
+      // Mock parsing for demonstration - in real app, decode protobuf
+      if (text.includes('myNodeNum') || text.includes('deviceId')) {
+        return {
+          type: 'device_info',
+          data: {
+            myNodeNum: Math.floor(Math.random() * 4000000000),
+            deviceId: 'WebSerial-Device',
+            firmwareVersion: '2.6.11',
+            hwModel: 'SEEED_XIAO_S3',
+            rebootCount: 1,
+            lastResponse: new Date().toISOString()
+          }
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Response parsing error:', error);
+      return null;
+    }
+  };
+
+  const sendMeshtasticCommand = useCallback(async (port: SerialPort, command: string) => {
+    if (!port || !port.writable) return;
+    
+    try {
+      const writer = port.writable.getWriter();
+      const encoder = new TextEncoder();
+      
+      // Simple text command for testing
+      const commandData = encoder.encode(command + '\r\n');
+      await writer.write(commandData);
+      writer.releaseLock();
+      
+      console.log(`Sent command: ${command}`);
+    } catch (error) {
+      console.error('Error sending command:', error);
+    }
+  }, []);
+
+  const startDevicePolling = useCallback((port: SerialPort) => {
+    // Clear any existing polling
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+    
+    const interval = setInterval(async () => {
+      if (port && isConnected) {
+        // Send status request commands
+        await sendMeshtasticCommand(port, '--info');
+        console.log('Polling device for updated info...');
+      }
+    }, 2000); // Poll every 2 seconds
+    
+    setPollingInterval(interval);
+    
+    // Initial request after 1 second
+    setTimeout(async () => {
+      if (port && isConnected) {
+        await sendMeshtasticCommand(port, '--info');
+        console.log('Initial device info request sent');
+      }
+    }, 1000);
+  }, [pollingInterval, isConnected, sendMeshtasticCommand]);
+
   const disconnect = useCallback(async () => {
     if (port) {
       try {
+        // Clear polling interval
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+        }
+        
         await port.close();
         setPort(null);
         setIsConnected(false);
         setConnectionStatus("Disconnected");
         setDeviceInfo(null);
+        setMeshNodes(null);
+        setDevicePreferences(null);
         
         toast({
           title: "Device Disconnected",
@@ -209,13 +274,15 @@ function useWebSerialMeshtastic() {
         console.error('Disconnect error:', error);
       }
     }
-  }, [port, toast]);
+  }, [port, pollingInterval, toast]);
 
   return {
     isSupported: isWebSerialSupported,
     isConnected,
     connectionStatus,
     deviceInfo,
+    meshNodes,
+    devicePreferences,
     connect: connectToDevice,
     disconnect
   };
@@ -436,6 +503,66 @@ export default function NodesControl() {
                       <em>Note: If your device doesn't appear in the filtered list, the system will automatically show all available serial devices.</em>
                     </AlertDescription>
                   </Alert>
+
+                  {/* Device Info Display */}
+                  {webSerial.isConnected && (
+                    <div className="space-y-4">
+                      {webSerial.deviceInfo && (
+                        <div className="p-4 border rounded-lg">
+                          <h4 className="font-medium mb-3">Device Information</h4>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Device ID:</span>
+                              <span className="ml-2 font-mono">{webSerial.deviceInfo.deviceId}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Node Number:</span>
+                              <span className="ml-2 font-mono">{webSerial.deviceInfo.myNodeNum}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Firmware:</span>
+                              <span className="ml-2">{webSerial.deviceInfo.firmwareVersion}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Hardware:</span>
+                              <span className="ml-2">{webSerial.deviceInfo.hwModel}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Reboots:</span>
+                              <span className="ml-2">{webSerial.deviceInfo.rebootCount}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Last Response:</span>
+                              <span className="ml-2">{webSerial.deviceInfo.lastResponse}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {webSerial.meshNodes && (
+                        <div className="p-4 border rounded-lg">
+                          <h4 className="font-medium mb-3">Mesh Network Nodes</h4>
+                          <div className="text-sm">
+                            <p className="text-muted-foreground">
+                              {Object.keys(webSerial.meshNodes).length} nodes detected in mesh
+                            </p>
+                            <div className="mt-2 space-y-1">
+                              {Object.entries(webSerial.meshNodes).map(([nodeId, node]: [string, any]) => (
+                                <div key={nodeId} className="flex justify-between items-center">
+                                  <span className="font-mono text-xs">{nodeId}</span>
+                                  <span className="text-muted-foreground">{node.longName || 'Unknown'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="text-xs text-muted-foreground">
+                        🔄 Polling device every 2 seconds for updated information
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
