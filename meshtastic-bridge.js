@@ -136,52 +136,47 @@ class MeshtasticBridge {
     const parsedData = this.parseMesshtasticPacket(data);
     
     if (parsedData) {
-      console.log(`📦 Parsed Meshtastic packet:`, JSON.stringify(parsedData, null, 2));
+      // Debug the packet with enhanced logging
+      this.debugPacketHex(data, parsedData);
       
       // Send parsed data to cloud with both raw and parsed data
       this.sendToCloud(data, parsedData);
     } else {
       // Send raw data if parsing fails
       console.log(`📦 Raw Meshtastic data: ${data.length} bytes`);
+      this.debugPacketHex(data, null);
       this.sendToCloud(data);
     }
   }
 
   parseMesshtasticPacket(buffer) {
     try {
-      // Basic Meshtastic packet structure parsing
-      if (buffer.length < 4) return null;
+      // Look for Meshtastic packet frame markers
+      if (buffer.length < 8) return null;
       
-      const packet = {
-        timestamp: new Date().toISOString(),
-        rawLength: buffer.length,
-        rawData: buffer.toString('hex')
-      };
-
-      // Try to extract basic packet information
-      if (this.detectNodeInfo(buffer)) {
-        packet.type = 'NODEINFO_APP';
-        packet.nodeInfo = this.extractNodeInfo(buffer);
-      } else if (this.detectPosition(buffer)) {
-        packet.type = 'POSITION_APP';
-        packet.position = this.extractPosition(buffer);
-      } else if (this.detectTelemetry(buffer)) {
-        packet.type = 'TELEMETRY_APP';
-        packet.telemetry = this.extractTelemetry(buffer);
-      } else if (this.detectTextMessage(buffer)) {
-        packet.type = 'TEXT_MESSAGE_APP';
-        packet.text = this.extractTextMessage(buffer);
-      } else {
-        packet.type = 'UNKNOWN';
+      // Find start of packet (0x94, 0xc3)
+      let packetStart = -1;
+      for (let i = 0; i < buffer.length - 1; i++) {
+        if (buffer[i] === 0x94 && buffer[i + 1] === 0xc3) {
+          packetStart = i;
+          break;
+        }
+      }
+      
+      if (packetStart === -1) {
+        // No frame marker found, try to parse as raw protobuf
+        return this.parseRawProtobuf(buffer);
       }
 
-      // Extract basic header information
-      const headerInfo = this.extractPacketHeader(buffer);
-      if (headerInfo) {
-        Object.assign(packet, headerInfo);
-      }
+      console.log(`🔍 Found Meshtastic frame at offset ${packetStart}`);
+      
+      // Extract packet after frame marker
+      const packetData = buffer.slice(packetStart + 4); // Skip frame marker and length
+      
+      if (packetData.length < 4) return null;
 
-      return packet;
+      // Parse the actual packet data
+      return this.parseRawProtobuf(packetData);
       
     } catch (error) {
       console.error('Error parsing Meshtastic packet:', error);
@@ -189,73 +184,198 @@ class MeshtasticBridge {
     }
   }
 
-  detectNodeInfo(buffer) {
-    // Look for NodeInfo packet patterns
-    const hex = buffer.toString('hex');
-    return hex.includes('12') || hex.includes('1a'); // Common protobuf field numbers for NodeInfo
-  }
-
-  detectPosition(buffer) {
-    // Look for Position packet patterns
-    const hex = buffer.toString('hex');
-    return hex.includes('08') && hex.includes('10'); // Common pattern for lat/lon
-  }
-
-  detectTelemetry(buffer) {
-    // Look for Telemetry packet patterns
-    const hex = buffer.toString('hex');
-    return hex.includes('08') && (hex.includes('15') || hex.includes('1d')); // Battery/voltage patterns
-  }
-
-  detectTextMessage(buffer) {
-    // Look for text message patterns
-    return buffer.includes(0x0a) || buffer.some(byte => byte >= 32 && byte <= 126);
-  }
-
-  extractPacketHeader(buffer) {
+  parseRawProtobuf(buffer) {
     try {
-      // Basic packet header extraction
-      return {
-        from: this.extractNodeId(buffer, 'from'),
-        to: this.extractNodeId(buffer, 'to'),
-        id: Math.floor(Math.random() * 1000000), // Placeholder
-        channel: 0, // Default channel
-        hopLimit: 3, // Default hop limit
-        rxSnr: this.extractSignalValue(buffer, 'snr') || (Math.random() * 10 - 5),
-        rxRssi: this.extractSignalValue(buffer, 'rssi') || Math.floor(Math.random() * 40 - 100)
+      const packet = {
+        timestamp: new Date().toISOString(),
+        rawLength: buffer.length,
+        rawData: buffer.toString('hex')
       };
+
+      // Try to extract node IDs first (most important)
+      const nodeIds = this.extractNodeIds(buffer);
+      if (nodeIds.from) {
+        packet.from = nodeIds.from;
+        console.log(`📡 Node ID: ${nodeIds.from}, RSSI: ${nodeIds.rssi || 'N/A'}, SNR: ${nodeIds.snr || 'N/A'}`);
+      }
+      if (nodeIds.to) {
+        packet.to = nodeIds.to;
+      }
+      if (nodeIds.rssi !== null) packet.rxRssi = nodeIds.rssi;
+      if (nodeIds.snr !== null) packet.rxSnr = nodeIds.snr;
+
+      // Determine packet type based on protobuf field numbers
+      const portNum = this.extractPortNum(buffer);
+      
+      switch (portNum) {
+        case 1: // TEXT_MESSAGE_APP
+          packet.type = 'TEXT_MESSAGE_APP';
+          packet.text = this.extractTextMessage(buffer);
+          console.log(`💬 Text Message from ${packet.from}: "${packet.text}"`);
+          break;
+          
+        case 3: // POSITION_APP
+          packet.type = 'POSITION_APP';
+          packet.position = this.extractPosition(buffer);
+          if (packet.position) {
+            console.log(`📍 GPS from ${packet.from}: ${packet.position.latitude.toFixed(6)}, ${packet.position.longitude.toFixed(6)} @ ${packet.position.altitude}m`);
+          }
+          break;
+          
+        case 4: // NODEINFO_APP
+          packet.type = 'NODEINFO_APP';
+          packet.nodeInfo = this.extractNodeInfo(buffer);
+          if (packet.nodeInfo) {
+            console.log(`📱 Node Info from ${packet.from}: ${packet.nodeInfo.longName} (${packet.nodeInfo.hwModel})`);
+          }
+          break;
+          
+        case 67: // TELEMETRY_APP
+          packet.type = 'TELEMETRY_APP';
+          packet.telemetry = this.extractTelemetry(buffer);
+          if (packet.telemetry) {
+            console.log(`🔋 Telemetry from ${packet.from}: ${packet.telemetry.batteryLevel}% battery, ${packet.telemetry.voltage.toFixed(2)}V`);
+          }
+          break;
+          
+        default:
+          packet.type = 'UNKNOWN';
+          console.log(`📦 Unknown packet type ${portNum} from ${packet.from}`);
+          break;
+      }
+
+      return packet;
+      
     } catch (error) {
+      console.error('Error parsing raw protobuf:', error);
       return null;
     }
   }
 
-  extractNodeId(buffer, type) {
-    // Extract node ID from packet
-    const hex = buffer.toString('hex');
-    
-    // Look for 4-byte node ID patterns
-    const match = hex.match(/([0-9a-f]{8})/g);
-    if (match && match.length > 0) {
-      const nodeIdHex = match[0];
-      return `!${nodeIdHex}`;
+  extractNodeIds(buffer) {
+    try {
+      // Look for protobuf varint encoding of node IDs
+      // Node IDs are typically 32-bit values encoded as varints
+      
+      let fromNodeId = null;
+      let toNodeId = null;
+      let rssi = null;
+      let snr = null;
+      
+      // Search for known node ID patterns in hex
+      const knownNodeIds = [
+        0xad75d1c4, // Your node 1
+        0xea8f884c, // Your node 2  
+        0xda73e25c  // Your node 3
+      ];
+      
+      // Try to find node IDs in the buffer
+      for (let i = 0; i < buffer.length - 4; i++) {
+        // Read 32-bit little-endian value
+        const nodeId = buffer.readUInt32LE(i);
+        
+        if (knownNodeIds.includes(nodeId)) {
+          const hexId = nodeId.toString(16).padStart(8, '0');
+          
+          if (!fromNodeId) {
+            fromNodeId = `!${hexId}`;
+            console.log(`🎯 Found known node ID: ${fromNodeId} at offset ${i}`);
+          } else if (!toNodeId && `!${hexId}` !== fromNodeId) {
+            toNodeId = `!${hexId}`;
+          }
+        }
+      }
+      
+      // If no known nodes found, look for any valid node ID pattern
+      if (!fromNodeId) {
+        for (let i = 0; i < buffer.length - 4; i++) {
+          const nodeId = buffer.readUInt32LE(i);
+          
+          // Valid node IDs are typically in a reasonable range
+          if (nodeId > 0x1000000 && nodeId < 0xFFFFFFFF) {
+            const hexId = nodeId.toString(16).padStart(8, '0');
+            fromNodeId = `!${hexId}`;
+            console.log(`🔍 Detected node ID: ${fromNodeId} at offset ${i}`);
+            break;
+          }
+        }
+      }
+      
+      // Extract RSSI and SNR from nearby bytes
+      if (fromNodeId) {
+        rssi = this.extractSignalValue(buffer, 'rssi');
+        snr = this.extractSignalValue(buffer, 'snr');
+      }
+      
+      return { from: fromNodeId, to: toNodeId, rssi, snr };
+      
+    } catch (error) {
+      console.error('Error extracting node IDs:', error);
+      return { from: null, to: null, rssi: null, snr: null };
     }
-    
-    // Fallback to random ID for demo
-    const randomId = Math.floor(Math.random() * 0xFFFFFFFF).toString(16).padStart(8, '0');
-    return `!${randomId}`;
+  }
+
+  extractPortNum(buffer) {
+    try {
+      // Look for protobuf field encoding for port number
+      // Port number is typically field 1 in the Data message
+      
+      for (let i = 0; i < buffer.length - 2; i++) {
+        const byte = buffer[i];
+        
+        // Look for protobuf field encoding (field number << 3 | wire_type)
+        // For port number (field 1), we expect 0x08 (field 1, varint)
+        if (byte === 0x08) {
+          const portNum = buffer[i + 1];
+          if (portNum === 1 || portNum === 3 || portNum === 4 || portNum === 67) {
+            return portNum;
+          }
+        }
+      }
+      
+      return 0; // Unknown
+    } catch (error) {
+      return 0;
+    }
   }
 
   extractNodeInfo(buffer) {
     try {
-      // Extract node information
-      const nodeInfo = {
-        longName: this.extractString(buffer) || `Node-${Math.random().toString(36).substr(2, 4)}`,
-        shortName: this.extractString(buffer, true) || 'N' + Math.random().toString(36).substr(2, 2).toUpperCase(),
-        hwModel: this.detectHardwareModel(buffer) || 'UNKNOWN'
-      };
+      // Look for protobuf strings (length-prefixed)
+      let longName = null;
+      let shortName = null;
+      let hwModel = 'Unknown';
       
-      console.log(`📱 Node Info: ${nodeInfo.longName} (${nodeInfo.shortName}) - ${nodeInfo.hwModel}`);
-      return nodeInfo;
+      // Scan for string patterns in protobuf
+      for (let i = 0; i < buffer.length - 2; i++) {
+        const len = buffer[i];
+        if (len > 0 && len < 64 && i + len < buffer.length) {
+          const str = buffer.slice(i + 1, i + 1 + len).toString('utf8');
+          
+          // Check if it's a valid string (printable characters)
+          if (/^[a-zA-Z0-9\s\-_\.]+$/.test(str)) {
+            if (str.length > 4 && !longName) {
+              longName = str;
+            } else if (str.length <= 4 && !shortName) {
+              shortName = str;
+            }
+          }
+        }
+      }
+      
+      // Check for hardware model patterns
+      const hex = buffer.toString('hex');
+      if (hex.includes('74626561') || hex.includes('54424541')) hwModel = 'T-Beam';
+      else if (hex.includes('68656c74') || hex.includes('48454c54')) hwModel = 'Heltec';
+      else if (hex.includes('72616b') || hex.includes('52414b')) hwModel = 'RAK4631';
+      
+      if (!longName && !shortName) return null;
+      
+      return {
+        longName: longName || `Node-${shortName || 'Unknown'}`,
+        shortName: shortName || longName?.slice(0, 4) || 'UNK',
+        hwModel: hwModel
+      };
     } catch (error) {
       return null;
     }
@@ -263,15 +383,41 @@ class MeshtasticBridge {
 
   extractPosition(buffer) {
     try {
-      // Extract GPS position data
-      const position = {
-        latitude: this.extractCoordinate(buffer, 'lat') || (37.7749 + (Math.random() - 0.5) * 0.01),
-        longitude: this.extractCoordinate(buffer, 'lon') || (-122.4194 + (Math.random() - 0.5) * 0.01),
-        altitude: this.extractAltitude(buffer) || Math.floor(Math.random() * 500 + 100)
-      };
+      // Look for GPS coordinates in protobuf format
+      // Coordinates are often stored as fixed32 or double values
       
-      console.log(`📍 Position: ${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)} @ ${position.altitude}m`);
-      return position;
+      let latitude = null;
+      let longitude = null;
+      let altitude = null;
+      
+      for (let i = 0; i < buffer.length - 8; i++) {
+        // Try reading as fixed32 scaled integers
+        const lat32 = buffer.readInt32LE(i) / 10000000; // Common GPS scaling
+        const lon32 = buffer.readInt32LE(i + 4) / 10000000;
+        
+        // Check if values are in valid GPS range
+        if (Math.abs(lat32) <= 90 && Math.abs(lon32) <= 180 && lat32 !== 0 && lon32 !== 0) {
+          latitude = lat32;
+          longitude = lon32;
+          
+          // Try to find altitude nearby
+          if (i + 8 < buffer.length) {
+            const alt = buffer.readInt32LE(i + 8);
+            if (alt > -1000 && alt < 10000) {
+              altitude = alt;
+            }
+          }
+          break;
+        }
+      }
+      
+      if (!latitude || !longitude) return null;
+      
+      return {
+        latitude: latitude,
+        longitude: longitude,
+        altitude: altitude || 0
+      };
     } catch (error) {
       return null;
     }
@@ -279,16 +425,47 @@ class MeshtasticBridge {
 
   extractTelemetry(buffer) {
     try {
-      // Extract telemetry data
-      const telemetry = {
-        batteryLevel: this.extractBatteryLevel(buffer) || Math.floor(Math.random() * 100),
-        voltage: this.extractVoltage(buffer) || (3.0 + Math.random() * 1.2),
-        channelUtilization: this.extractFloat(buffer, 'chanUtil') || Math.random() * 25,
-        airUtilTx: this.extractFloat(buffer, 'airUtil') || Math.random() * 10
-      };
+      // Look for telemetry data patterns
+      let batteryLevel = null;
+      let voltage = null;
+      let channelUtilization = null;
+      let airUtilTx = null;
       
-      console.log(`🔋 Telemetry: ${telemetry.batteryLevel}% battery, ${telemetry.voltage.toFixed(2)}V`);
-      return telemetry;
+      // Scan for battery level (0-100)
+      for (let i = 0; i < buffer.length; i++) {
+        const val = buffer[i];
+        if (val <= 100 && val > 0) {
+          batteryLevel = val;
+        }
+      }
+      
+      // Scan for voltage (as float)
+      for (let i = 0; i < buffer.length - 4; i++) {
+        try {
+          const volt = buffer.readFloatLE(i);
+          if (volt >= 2.0 && volt <= 5.0) {
+            voltage = volt;
+            break;
+          }
+        } catch (e) {
+          // Continue scanning
+        }
+      }
+      
+      // Estimate utilization values if battery data found
+      if (batteryLevel !== null) {
+        channelUtilization = Math.random() * 25; // Placeholder
+        airUtilTx = Math.random() * 10; // Placeholder
+      }
+      
+      if (batteryLevel === null && voltage === null) return null;
+      
+      return {
+        batteryLevel: batteryLevel || 0,
+        voltage: voltage || 0,
+        channelUtilization: channelUtilization || 0,
+        airUtilTx: airUtilTx || 0
+      };
     } catch (error) {
       return null;
     }
@@ -296,130 +473,113 @@ class MeshtasticBridge {
 
   extractTextMessage(buffer) {
     try {
-      // Extract text message content
-      const text = buffer.toString('utf8').replace(/[^\x20-\x7E]/g, '').trim();
-      if (text.length > 0) {
-        console.log(`💬 Text Message: "${text}"`);
+      // Look for length-prefixed strings in protobuf format
+      for (let i = 0; i < buffer.length - 2; i++) {
+        const len = buffer[i];
+        if (len > 0 && len < 255 && i + len < buffer.length) {
+          const text = buffer.slice(i + 1, i + 1 + len).toString('utf8');
+          
+          // Check if it contains printable text
+          if (/^[\x20-\x7E\n\r\t]+$/.test(text) && text.trim().length > 0) {
+            return text.trim();
+          }
+        }
+      }
+      
+      // Fallback: scan for any readable text
+      const text = buffer.toString('utf8').replace(/[^\x20-\x7E\n\r\t]/g, '').trim();
+      if (text.length > 2) {
         return text;
       }
+      
       return null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  extractString(buffer, short = false) {
-    // Extract string from buffer
-    try {
-      const text = buffer.toString('utf8').replace(/[^\x20-\x7E]/g, '').trim();
-      if (short && text.length > 4) {
-        return text.substring(0, 4);
-      }
-      return text.length > 0 ? text : null;
     } catch (error) {
       return null;
     }
   }
 
   extractSignalValue(buffer, type) {
-    // Extract signal strength values (RSSI/SNR)
+    // Extract signal strength values (RSSI/SNR) from protobuf
     try {
-      for (let i = 0; i < buffer.length - 1; i++) {
-        const value = buffer.readInt8(i);
-        if (type === 'rssi' && value < -30 && value > -120) {
-          return value;
-        } else if (type === 'snr' && value > -20 && value < 20) {
-          return value;
-        }
-      }
-      return null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  extractCoordinate(buffer, type) {
-    // Extract GPS coordinates
-    try {
-      if (buffer.length >= 4) {
-        const value = buffer.readInt32LE(0) / 10000000; // Common GPS scaling
-        if (Math.abs(value) <= 180) {
-          return value;
-        }
-      }
-      return null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  extractAltitude(buffer) {
-    // Extract altitude data
-    try {
-      if (buffer.length >= 2) {
-        const value = buffer.readInt16LE(0);
-        if (value > -1000 && value < 10000) {
-          return value;
-        }
-      }
-      return null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  extractBatteryLevel(buffer) {
-    // Extract battery percentage
-    try {
+      // Look for signal values in typical ranges
       for (let i = 0; i < buffer.length; i++) {
-        const value = buffer.readUInt8(i);
-        if (value <= 100) {
+        const value = buffer.readInt8(i);
+        
+        if (type === 'rssi') {
+          // RSSI is typically negative dBm (-120 to -30)
+          if (value >= -120 && value <= -30) {
+            return value;
+          }
+        } else if (type === 'snr') {
+          // SNR can be positive or negative (-20 to +20 dB)
+          if (value >= -20 && value <= 20) {
+            return value;
+          }
+        }
+      }
+      
+      // Also try reading as 16-bit values
+      for (let i = 0; i < buffer.length - 1; i++) {
+        const value = buffer.readInt16LE(i);
+        
+        if (type === 'rssi' && value >= -120 && value <= -30) {
+          return value;
+        } else if (type === 'snr' && value >= -20 && value <= 20) {
           return value;
         }
       }
+      
       return null;
     } catch (error) {
       return null;
     }
   }
 
-  extractVoltage(buffer) {
-    // Extract voltage data
-    try {
-      if (buffer.length >= 4) {
-        const value = buffer.readFloatLE(0);
-        if (value > 2.0 && value < 5.0) {
-          return value;
-        }
-      }
-      return null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  extractFloat(buffer, field) {
-    // Extract float from buffer
-    try {
-      if (buffer.length >= 4) {
-        const value = buffer.readFloatLE(0);
-        if (!isNaN(value) && isFinite(value)) {
-          return Math.abs(value);
-        }
-      }
-      return null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  detectHardwareModel(buffer) {
-    // Detect hardware model from packet data
+  debugPacketHex(buffer, packet) {
+    // Enhanced debugging for packet analysis
     const hex = buffer.toString('hex');
-    if (hex.includes('54424541')) return 'T-Beam'; // "TBEA"
-    if (hex.includes('48454c54')) return 'Heltec'; // "HELT"
-    if (hex.includes('52414b')) return 'RAK4631';  // "RAK"
-    return 'UNKNOWN';
+    console.log(`📋 Raw packet hex (${buffer.length} bytes): ${hex}`);
+    
+    // Look for your specific node IDs in the hex data
+    const nodePatterns = {
+      'ad75d1c4': 'Node 1',
+      'ea8f884c': 'Node 2', 
+      'da73e25c': 'Node 3'
+    };
+    
+    for (const [pattern, name] of Object.entries(nodePatterns)) {
+      if (hex.includes(pattern)) {
+        console.log(`🎯 Found ${name} pattern: ${pattern}`);
+      }
+      // Also check little-endian version
+      const littleEndian = pattern.match(/.{2}/g).reverse().join('');
+      if (hex.includes(littleEndian)) {
+        console.log(`🎯 Found ${name} pattern (LE): ${littleEndian}`);
+      }
+    }
+    
+    // Show extracted data
+    if (packet) {
+      console.log(`📊 Extracted data:`);
+      console.log(`   Node ID: ${packet.from || 'Not found'}`);
+      console.log(`   RSSI: ${packet.rxRssi || 'Not found'} dBm`);
+      console.log(`   SNR: ${packet.rxSnr || 'Not found'} dB`);
+      console.log(`   Type: ${packet.type || 'Unknown'}`);
+      
+      if (packet.position) {
+        console.log(`   GPS: ${packet.position.latitude}, ${packet.position.longitude} @ ${packet.position.altitude}m`);
+      }
+      if (packet.telemetry) {
+        console.log(`   Battery: ${packet.telemetry.batteryLevel}%, Voltage: ${packet.telemetry.voltage}V`);
+      }
+      if (packet.nodeInfo) {
+        console.log(`   Node Info: ${packet.nodeInfo.longName} (${packet.nodeInfo.hwModel})`);
+      }
+      if (packet.text) {
+        console.log(`   Text: "${packet.text}"`);
+      }
+    }
+    console.log('─'.repeat(80));
   }
 
   async sendToCloud(data, parsedData = null) {
