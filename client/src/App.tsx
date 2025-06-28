@@ -120,6 +120,7 @@ function Router() {
           <Route path="/map" component={AuthenticatedApp} />
           <Route path="/communications" component={AuthenticatedApp} />
           <Route path="/drone-control" component={AuthenticatedApp} />
+          <Route path="/nodes-control" component={AuthenticatedApp} />
           <Route path="/mission-planning" component={AuthenticatedApp} />
           <Route path="/team-management" component={AuthenticatedApp} />
           <Route path="/settings" component={AuthenticatedApp} />

@@ -304,6 +304,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Web Serial Meshtastic endpoint
+  app.post("/api/meshtastic/process-serial", async (req, res) => {
+    try {
+      const { data, timestamp } = req.body;
+      
+      if (!data || !Array.isArray(data)) {
+        return res.status(400).json({ message: "Invalid data format" });
+      }
+
+      // Convert array back to buffer
+      const buffer = Buffer.from(data);
+      
+      // Process the raw Meshtastic data (similar to bridge processing)
+      console.log(`[Web Serial] Received ${buffer.length} bytes at ${new Date(timestamp).toISOString()}`);
+      
+      // Track Web Serial activity
+      if (!global.meshtasticWebSerialStats) {
+        global.meshtasticWebSerialStats = {
+          totalMessages: 0,
+          totalBytes: 0,
+          lastReceived: null,
+          isActive: false
+        };
+      }
+      
+      global.meshtasticWebSerialStats.totalMessages += 1;
+      global.meshtasticWebSerialStats.totalBytes += buffer.length;
+      global.meshtasticWebSerialStats.lastReceived = new Date().toISOString();
+      global.meshtasticWebSerialStats.isActive = true;
+
+      // Reset activity after 10 seconds of no data
+      setTimeout(() => {
+        if (global.meshtasticWebSerialStats && 
+            new Date().getTime() - new Date(global.meshtasticWebSerialStats.lastReceived!).getTime() > 9000) {
+          global.meshtasticWebSerialStats.isActive = false;
+        }
+      }, 10000);
+
+      // TODO: Parse the protobuf data to extract node information
+      // This would require implementing the Meshtastic protobuf parsing
+      
+      res.json({ success: true, processed: buffer.length });
+    } catch (error) {
+      console.error("Error processing Web Serial data:", error);
+      res.status(500).json({ message: "Failed to process data" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Bridge API endpoints for cloud connectivity

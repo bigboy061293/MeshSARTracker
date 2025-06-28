@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Wifi, WifiOff, Battery, MapPin, Radio, Settings, Power, Zap } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import { AlertCircle, Wifi, WifiOff, Battery, MapPin, Radio, Settings, Power, Zap, Usb, Bluetooth, Globe, Lock, LockOpen, Clock, Activity, Gauge, Router } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Node {
   id: string;
@@ -26,6 +31,15 @@ interface Node {
   altitude?: number;
   rssi?: number;
   snr?: number;
+  macAddress?: string;
+  hopsAway?: number;
+  viaMqtt?: boolean;
+  encryption?: boolean;
+  publicKey?: string;
+  firmwareVersion?: string;
+  uptime?: number;
+  channelUtilization?: number;
+  airUtilTx?: number;
 }
 
 interface BridgeStatus {
@@ -35,9 +49,141 @@ interface BridgeStatus {
   isActive: boolean;
 }
 
+// Web Serial Communication Hook
+function useWebSerialMeshtastic() {
+  const [port, setPort] = useState<SerialPort | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string>("Disconnected");
+  const [deviceInfo, setDeviceInfo] = useState<any>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const isWebSerialSupported = useMemo(() => {
+    return 'serial' in navigator;
+  }, []);
+
+  const connectToDevice = useCallback(async () => {
+    if (!isWebSerialSupported) {
+      toast({
+        title: "Web Serial Not Supported",
+        description: "Please use Chrome/Edge browser for Web Serial connectivity",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setConnectionStatus("Requesting device...");
+      
+      // Request a port and open a connection
+      const selectedPort = await navigator.serial.requestPort({
+        filters: [
+          { usbVendorId: 0x10C4, usbProductId: 0xEA60 }, // CP2102 USB to UART Bridge
+          { usbVendorId: 0x1A86, usbProductId: 0x7523 }, // CH340 USB to Serial
+          { usbVendorId: 0x0403, usbProductId: 0x6001 }, // FTDI USB Serial
+        ]
+      });
+
+      setConnectionStatus("Opening connection...");
+      await selectedPort.open({ baudRate: 115200 });
+      
+      setPort(selectedPort);
+      setIsConnected(true);
+      setConnectionStatus("Connected");
+      
+      toast({
+        title: "Device Connected",
+        description: "Successfully connected to Meshtastic device via Web Serial",
+      });
+
+      // Start reading data
+      startReading(selectedPort);
+
+    } catch (error) {
+      console.error('Web Serial connection error:', error);
+      setConnectionStatus("Connection Failed");
+      toast({
+        title: "Connection Failed",
+        description: error instanceof Error ? error.message : "Failed to connect to device",
+        variant: "destructive",
+      });
+    }
+  }, [isWebSerialSupported, toast]);
+
+  const startReading = useCallback(async (serialPort: SerialPort) => {
+    const reader = serialPort.readable?.getReader();
+    if (!reader) return;
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        // Process received Meshtastic data
+        await processReceivedData(value);
+      }
+    } catch (error) {
+      console.error('Reading error:', error);
+    } finally {
+      reader.releaseLock();
+    }
+  }, []);
+
+  const processReceivedData = useCallback(async (data: Uint8Array) => {
+    try {
+      // Send raw data to server for processing
+      await apiRequest("/api/meshtastic/process-serial", "POST", {
+        data: Array.from(data),
+        timestamp: Date.now()
+      });
+      
+      // Refresh nodes data
+      queryClient.invalidateQueries({ queryKey: ["/api/nodes"] });
+    } catch (error) {
+      console.error('Data processing error:', error);
+    }
+  }, [queryClient]);
+
+  const disconnect = useCallback(async () => {
+    if (port) {
+      try {
+        await port.close();
+        setPort(null);
+        setIsConnected(false);
+        setConnectionStatus("Disconnected");
+        setDeviceInfo(null);
+        
+        toast({
+          title: "Device Disconnected",
+          description: "Web Serial connection closed",
+        });
+      } catch (error) {
+        console.error('Disconnect error:', error);
+      }
+    }
+  }, [port, toast]);
+
+  return {
+    isSupported: isWebSerialSupported,
+    isConnected,
+    connectionStatus,
+    deviceInfo,
+    connect: connectToDevice,
+    disconnect
+  };
+}
+
 export default function NodesControl() {
   const [selectedNode, setSelectedNode] = useState<string>("");
   const [bridgeUrl, setBridgeUrl] = useState("");
+  const [filterText, setFilterText] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "lastSeen" | "snr" | "hops">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
+  const [selectedConnectionTab, setSelectedConnectionTab] = useState<"bridge" | "webserial">("bridge");
+  
+  const webSerial = useWebSerialMeshtastic();
+  const { toast } = useToast();
 
   // Fetch nodes data
   const { data: nodes = [], isLoading: nodesLoading } = useQuery<Node[]>({
@@ -51,6 +197,7 @@ export default function NodesControl() {
     refetchInterval: 5000,
   });
 
+  // Utility functions
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -75,6 +222,82 @@ export default function NodesControl() {
     return "bg-red-500";
   };
 
+  const formatMacAddress = (macAddress?: string) => {
+    if (!macAddress) return "Unknown";
+    return macAddress.match(/.{2}/g)?.join(":") || macAddress;
+  };
+
+  const getHardwareModel = (hwModel: string) => {
+    // Map hardware model codes to readable names
+    const models: Record<string, string> = {
+      "HELTEC_V3": "Heltec V3",
+      "TBEAM": "T-Beam",
+      "T_ECHO": "T-Echo",
+      "LORA32_V2": "LoRa32 V2",
+      "STATION_G1": "Station G1",
+      "RAK4631": "RAK4631",
+      "TBEAM_V1_1": "T-Beam V1.1",
+      "HELTEC_V2_1": "Heltec V2.1"
+    };
+    return models[hwModel] || hwModel;
+  };
+
+  const getConnectionText = (node: Node) => {
+    if (node.hopsAway !== undefined) {
+      if (node.viaMqtt === false && node.hopsAway === 0) {
+        return "Direct";
+      } else {
+        const hopText = node.hopsAway === 1 ? "hop" : "hops";
+        return `${node.hopsAway} ${hopText} away`;
+      }
+    }
+    return "Unknown";
+  };
+
+  // Filter and sort nodes
+  const filteredAndSortedNodes = useMemo(() => {
+    let filtered = showOnlineOnly ? nodes.filter(n => n.isOnline) : nodes;
+    
+    if (filterText) {
+      filtered = filtered.filter(node => 
+        node.name.toLowerCase().includes(filterText.toLowerCase()) ||
+        node.shortName.toLowerCase().includes(filterText.toLowerCase()) ||
+        node.nodeId.toLowerCase().includes(filterText.toLowerCase())
+      );
+    }
+
+    return filtered.sort((a, b) => {
+      let aVal, bVal;
+      switch (sortBy) {
+        case "name":
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case "lastSeen":
+          aVal = new Date(a.lastSeen).getTime();
+          bVal = new Date(b.lastSeen).getTime();
+          break;
+        case "snr":
+          aVal = a.snr || -999;
+          bVal = b.snr || -999;
+          break;
+        case "hops":
+          aVal = a.hopsAway || 999;
+          bVal = b.hopsAway || 999;
+          break;
+        default:
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+      }
+      
+      if (sortOrder === "asc") {
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      } else {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+      }
+    });
+  }, [nodes, filterText, sortBy, sortOrder, showOnlineOnly]);
+
   const onlineNodes = nodes.filter(n => n.isOnline);
   const offlineNodes = nodes.filter(n => !n.isOnline);
 
@@ -82,9 +305,9 @@ export default function NodesControl() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Nodes Control Mode</h1>
+          <h1 className="text-3xl font-bold">Meshtastic Network Nodes</h1>
           <p className="text-muted-foreground">
-            Manage and configure Meshtastic devices in your mesh network
+            Connect and monitor Meshtastic mesh network devices
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -94,76 +317,134 @@ export default function NodesControl() {
           <Badge variant="outline">
             {nodes.length} Total
           </Badge>
+          {webSerial.isConnected && (
+            <Badge variant="default" className="bg-green-600">
+              <Usb className="h-3 w-3 mr-1" />
+              Web Serial
+            </Badge>
+          )}
         </div>
       </div>
 
-      {/* Bridge Status */}
+      {/* Connection Methods */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Radio className="h-5 w-5" />
-            Bridge Connection Status
+            Device Connection
           </CardTitle>
           <CardDescription>
-            Status of the Meshtastic bridge connection to local hardware
+            Connect to Meshtastic devices via Web Serial or bridge
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {bridgeStatus?.meshtastic ? (
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${bridgeStatus.meshtastic.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <div>
-                    <p className="font-medium">
-                      {bridgeStatus.meshtastic.isActive ? 'Bridge Active' : 'Bridge Inactive'}
+          <Tabs value={selectedConnectionTab} onValueChange={(value) => setSelectedConnectionTab(value as "bridge" | "webserial")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="webserial" className="flex items-center gap-2">
+                <Usb className="h-4 w-4" />
+                Web Serial
+              </TabsTrigger>
+              <TabsTrigger value="bridge" className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Bridge Connection
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="webserial" className="space-y-4">
+              {!webSerial.isSupported ? (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Web Serial API is not supported in this browser. Please use Chrome 89+ or Edge 89+ for direct device connectivity.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${webSerial.isConnected ? 'bg-green-500' : 'bg-gray-500'}`} />
+                      <div>
+                        <p className="font-medium">{webSerial.connectionStatus}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {webSerial.isConnected ? 'Device connected via USB/Serial' : 'No device connected'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={webSerial.isConnected ? webSerial.disconnect : webSerial.connect}
+                      variant={webSerial.isConnected ? "destructive" : "default"}
+                    >
+                      {webSerial.isConnected ? "Disconnect" : "Connect Device"}
+                    </Button>
+                  </div>
+                  
+                  <Alert>
+                    <Usb className="h-4 w-4" />
+                    <AlertDescription>
+                      Web Serial allows direct connection to Meshtastic devices via USB. 
+                      Supports CP2102, CH340, and FTDI USB-to-Serial adapters commonly used in Meshtastic devices.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="bridge" className="space-y-4">
+              {bridgeStatus?.meshtastic ? (
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${bridgeStatus.meshtastic.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <div>
+                      <p className="font-medium">
+                        {bridgeStatus.meshtastic.isActive ? 'Bridge Active' : 'Bridge Inactive'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {bridgeStatus.meshtastic.lastReceived 
+                          ? `Last data: ${new Date(bridgeStatus.meshtastic.lastReceived).toLocaleTimeString()}`
+                          : 'No data received'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium">
+                      {formatBytes(bridgeStatus.meshtastic.totalBytes)}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {bridgeStatus.meshtastic.lastReceived 
-                        ? `Last data: ${new Date(bridgeStatus.meshtastic.lastReceived).toLocaleTimeString()}`
-                        : 'No data received'
-                      }
+                      {bridgeStatus.meshtastic.totalMessages} packets
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">
-                    {formatBytes(bridgeStatus.meshtastic.totalBytes)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {bridgeStatus.meshtastic.totalMessages} packets
-                  </p>
+              ) : (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    No bridge connection detected. Start the meshtastic-bridge.js tool to connect local devices.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="bridge-url">Bridge URL (for local setup)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="bridge-url"
+                    placeholder="https://your-repl.replit.dev"
+                    value={bridgeUrl}
+                    onChange={(e) => setBridgeUrl(e.target.value)}
+                  />
+                  <Button variant="outline" onClick={() => {
+                    navigator.clipboard.writeText(`node meshtastic-bridge.js --url ${bridgeUrl || window.location.origin}`);
+                  }}>
+                    Copy Command
+                  </Button>
                 </div>
+                <p className="text-sm text-muted-foreground">
+                  Run: <code>node meshtastic-bridge.js --url {bridgeUrl || window.location.origin}</code>
+                </p>
               </div>
-            ) : (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  No bridge connection detected. Start the meshtastic-bridge.js tool to connect local devices.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="bridge-url">Bridge URL (for local setup)</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="bridge-url"
-                  placeholder="https://your-repl.replit.dev"
-                  value={bridgeUrl}
-                  onChange={(e) => setBridgeUrl(e.target.value)}
-                />
-                <Button variant="outline" onClick={() => {
-                  navigator.clipboard.writeText(`node meshtastic-bridge.js --url ${bridgeUrl || window.location.origin}`);
-                }}>
-                  Copy Command
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Run: <code>node meshtastic-bridge.js --url {bridgeUrl || window.location.origin}</code>
-              </p>
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -175,91 +456,226 @@ export default function NodesControl() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          {/* Online Nodes */}
+          {/* Nodes Control Panel */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Wifi className="h-5 w-5 text-green-500" />
-                Online Nodes ({onlineNodes.length})
+                <Router className="h-5 w-5" />
+                Network Nodes
               </CardTitle>
+              <CardDescription>
+                Comprehensive view of all Meshtastic nodes in the mesh network
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              {onlineNodes.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <WifiOff className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No nodes currently online</p>
-                  <p className="text-sm">Check your bridge connection and device power</p>
+            <CardContent className="space-y-4">
+              {/* Filters and Controls */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Search nodes by name, short name, or ID..."
+                    value={filterText}
+                    onChange={(e) => setFilterText(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">Name</SelectItem>
+                      <SelectItem value="lastSeen">Last Seen</SelectItem>
+                      <SelectItem value="snr">Signal</SelectItem>
+                      <SelectItem value="hops">Hops</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                  >
+                    {sortOrder === "asc" ? "↑" : "↓"}
+                  </Button>
+                  
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={showOnlineOnly}
+                      onCheckedChange={setShowOnlineOnly}
+                    />
+                    <span className="text-sm whitespace-nowrap">Online only</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nodes Table */}
+              {filteredAndSortedNodes.length === 0 ? (
+                <div className="text-center py-8">
+                  <Router className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">
+                    {nodes.length === 0 
+                      ? "No nodes detected. Connect a Meshtastic device to start monitoring your mesh network."
+                      : "No nodes match your current filters."
+                    }
+                  </p>
                 </div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {onlineNodes.map((node) => (
-                    <Card key={node.id}>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">{node.name}</CardTitle>
-                          <Badge variant="default" className="bg-green-500">
-                            {node.shortName}
-                          </Badge>
-                        </div>
-                        <CardDescription>{node.hwModel}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Battery</span>
-                          <div className="flex items-center gap-2">
-                            <Battery className="h-4 w-4" />
-                            <span className="text-sm font-medium">
-                              {node.batteryLevel ?? 'N/A'}%
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Voltage</span>
-                          <div className="flex items-center gap-2">
-                            <Zap className="h-4 w-4" />
-                            <span className="text-sm font-medium">
-                              {node.voltage?.toFixed(2) ?? 'N/A'}V
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Signal</span>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${getSignalColor(node.rssi)}`} />
-                            <span className="text-sm font-medium">
-                              {node.rssi ? `${node.rssi}dBm` : 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">SNR</span>
-                          <span className="text-sm font-medium">
-                            {node.snr ? `${node.snr}dB` : 'N/A'}
-                          </span>
-                        </div>
-                        
-                        {node.latitude && node.longitude && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Position</span>
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-4 w-4" />
-                              <span className="text-sm font-medium">
-                                {node.latitude.toFixed(4)}, {node.longitude.toFixed(4)}
-                              </span>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead>Node</TableHead>
+                        <TableHead>Hardware</TableHead>
+                        <TableHead>Connection</TableHead>
+                        <TableHead>Signal</TableHead>
+                        <TableHead>Battery</TableHead>
+                        <TableHead>Last Activity</TableHead>
+                        <TableHead>Details</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredAndSortedNodes.map((node) => (
+                        <>
+                        <TableRow key={node.id} className={node.isOnline ? "" : "opacity-60"}>
+                          <TableCell>
+                            <div className={`w-3 h-3 rounded-full ${node.isOnline ? 'bg-green-500' : 'bg-gray-500'}`} />
+                          </TableCell>
+                          
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{node.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {node.shortName} • {node.nodeId.slice(-8)}
+                              </p>
                             </div>
-                          </div>
-                        )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            <div>
+                              <p className="text-sm font-medium">{getHardwareModel(node.hwModel)}</p>
+                              {node.firmwareVersion && (
+                                <p className="text-xs text-muted-foreground">v{node.firmwareVersion}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {node.viaMqtt ? (
+                                <Globe className="h-4 w-4 text-blue-500" />
+                              ) : (
+                                <Radio className="h-4 w-4 text-green-500" />
+                              )}
+                              <span className="text-sm">{getConnectionText(node)}</span>
+                              {node.encryption && <Lock className="h-3 w-3 text-yellow-500" />}
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell>
+                            {node.rssi && node.snr ? (
+                              <div>
+                                <Badge variant="outline" className={`text-xs ${getSignalColor(node.rssi).replace('bg-', 'border-')}`}>
+                                  {node.rssi} dBm
+                                </Badge>
+                                <p className="text-xs text-muted-foreground mt-1">SNR: {node.snr}</p>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Unknown</span>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            {node.batteryLevel ? (
+                              <div className="flex items-center gap-2">
+                                <Battery className={`h-4 w-4 ${node.batteryLevel > 20 ? 'text-green-500' : 'text-red-500'}`} />
+                                <span className="text-sm">{node.batteryLevel}%</span>
+                                {node.voltage && (
+                                  <span className="text-xs text-muted-foreground">({node.voltage}V)</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Unknown</span>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            <div>
+                              <p className="text-sm">{new Date(node.lastSeen).toLocaleTimeString()}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(node.lastSeen).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedNode(selectedNode === node.nodeId ? "" : node.nodeId)}
+                            >
+                              {selectedNode === node.nodeId ? "Hide" : "Show"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
                         
-                        <Separator />
-                        <div className="text-xs text-muted-foreground">
-                          Last seen: {new Date(node.lastSeen).toLocaleTimeString()}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        {selectedNode === node.nodeId && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="bg-muted/50">
+                              <div className="p-4 space-y-3">
+                                <h4 className="font-medium">Detailed Information</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-muted-foreground">Node ID:</span>
+                                    <p className="font-mono">{node.nodeId}</p>
+                                  </div>
+                                  {node.macAddress && (
+                                    <div>
+                                      <span className="text-muted-foreground">MAC Address:</span>
+                                      <p className="font-mono">{formatMacAddress(node.macAddress)}</p>
+                                    </div>
+                                  )}
+                                  {node.uptime && (
+                                    <div>
+                                      <span className="text-muted-foreground">Uptime:</span>
+                                      <p>{Math.floor(node.uptime / 3600)}h {Math.floor((node.uptime % 3600) / 60)}m</p>
+                                    </div>
+                                  )}
+                                  {node.channelUtilization && (
+                                    <div>
+                                      <span className="text-muted-foreground">Channel Usage:</span>
+                                      <p>{node.channelUtilization.toFixed(1)}%</p>
+                                    </div>
+                                  )}
+                                  {node.latitude && node.longitude && (
+                                    <div className="col-span-2">
+                                      <span className="text-muted-foreground">Position:</span>
+                                      <p className="font-mono">
+                                        {node.latitude.toFixed(6)}, {node.longitude.toFixed(6)}
+                                        {node.altitude && ` (${node.altitude}m)`}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {node.publicKey && (
+                                  <div>
+                                    <span className="text-muted-foreground">Public Key:</span>
+                                    <p className="font-mono text-xs break-all bg-background p-2 rounded border">
+                                      {node.publicKey}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        </>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>
