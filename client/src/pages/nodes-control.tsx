@@ -76,13 +76,20 @@ function useWebSerialMeshtastic() {
       setConnectionStatus("Requesting device...");
       
       // Request a port and open a connection
+      // Note: The browser will show a device picker dialog
       const selectedPort = await navigator.serial.requestPort({
         filters: [
           { usbVendorId: 0x10C4, usbProductId: 0xEA60 }, // CP2102 USB to UART Bridge
           { usbVendorId: 0x1A86, usbProductId: 0x7523 }, // CH340 USB to Serial
           { usbVendorId: 0x0403, usbProductId: 0x6001 }, // FTDI USB Serial
+          { usbVendorId: 0x1B4F, usbProductId: 0x9D50 }, // SparkFun Pro Micro
+          { usbVendorId: 0x239A, usbProductId: 0x8014 }, // Adafruit ESP32-S2
         ]
       });
+
+      if (!selectedPort) {
+        throw new Error("No device selected");
+      }
 
       setConnectionStatus("Opening connection...");
       await selectedPort.open({ baudRate: 115200 });
@@ -102,9 +109,21 @@ function useWebSerialMeshtastic() {
     } catch (error) {
       console.error('Web Serial connection error:', error);
       setConnectionStatus("Connection Failed");
+      
+      let errorMessage = "Failed to connect to device";
+      if (error instanceof Error) {
+        if (error.message.includes("No port selected")) {
+          errorMessage = "No device was selected. Please try again and select a Meshtastic device from the dialog.";
+        } else if (error.message.includes("not supported")) {
+          errorMessage = "Web Serial is not supported. Please use Chrome 89+ or Edge 89+.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Connection Failed",
-        description: error instanceof Error ? error.message : "Failed to connect to device",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -381,8 +400,11 @@ export default function NodesControl() {
                   <Alert>
                     <Usb className="h-4 w-4" />
                     <AlertDescription>
-                      Web Serial allows direct connection to Meshtastic devices via USB. 
-                      Supports CP2102, CH340, and FTDI USB-to-Serial adapters commonly used in Meshtastic devices.
+                      <strong>How to connect:</strong><br/>
+                      1. Connect your Meshtastic device via USB cable<br/>
+                      2. Click "Connect Device" and select your device from the browser dialog<br/>
+                      3. Supports ESP32, T-Beam, Heltec, and other Meshtastic devices<br/>
+                      <em>Note: The browser will show a permission dialog to select the serial port.</em>
                     </AlertDescription>
                   </Alert>
                 </div>
