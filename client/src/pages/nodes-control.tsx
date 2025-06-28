@@ -188,6 +188,32 @@ function useWebSerialMeshtastic() {
         timestamp: Date.now()
       });
       
+      // For testing purposes, create some sample node data if we detect node patterns
+      if (text.includes('!') && text.match(/!([a-f0-9]{8})/)) {
+        console.log(`🧪 [TEST] Creating test node data for development`);
+        try {
+          // Create test nodes from your known node IDs
+          const testNodes = ['!ad75d1c4', '!ea8f884c', '!da73e25c'];
+          for (const nodeId of testNodes) {
+            await apiRequest("/api/nodes", "POST", {
+              nodeId: nodeId,
+              name: `Test-${nodeId.slice(-4)}`,
+              shortName: nodeId.slice(-4).toUpperCase(),
+              hwModel: 'TBEAM',
+              isOnline: true,
+              lastSeen: new Date().toISOString(),
+              batteryLevel: Math.floor(Math.random() * 100),
+              voltage: 3.7 + Math.random(),
+              rssi: -80 + Math.floor(Math.random() * 40),
+              snr: 5 + Math.floor(Math.random() * 10)
+            });
+          }
+          console.log(`✅ [TEST] Test nodes created successfully`);
+        } catch (error) {
+          console.error('❌ [TEST] Failed to create test nodes:', error);
+        }
+      }
+      
       // Refresh nodes data
       queryClient.invalidateQueries({ queryKey: ["/api/nodes"] });
     } catch (error) {
@@ -748,6 +774,31 @@ export default function NodesControl() {
             <CardContent className="space-y-4">
               {/* Filters and Controls */}
               <div className="flex flex-col sm:flex-row gap-4">
+                <Button 
+                  onClick={async () => {
+                    try {
+                      console.log('🧪 Creating test nodes...');
+                      const response = await apiRequest("/api/nodes/create-test", "POST", {});
+                      console.log('✅ Test nodes created:', response);
+                      queryClient.invalidateQueries({ queryKey: ["/api/nodes"] });
+                      toast({
+                        title: "Test Nodes Created",
+                        description: `Created ${response.count} test nodes successfully`,
+                      });
+                    } catch (error) {
+                      console.error('❌ Failed to create test nodes:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to create test nodes",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  variant="outline"
+                  className="w-fit"
+                >
+                  Create Test Nodes
+                </Button>
                 <div className="flex-1">
                   <Input
                     placeholder="Search nodes by name, short name, or ID..."

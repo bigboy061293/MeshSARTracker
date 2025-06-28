@@ -16,6 +16,87 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+// Process node data from Web Serial
+async function processWebSerialNodeData(textData: string) {
+  try {
+    const lines = textData.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    
+    for (const line of lines) {
+      // Look for node ID patterns like "!abcd1234"
+      const nodeIdMatch = line.match(/!([a-f0-9]{8})/);
+      if (nodeIdMatch) {
+        const nodeId = nodeIdMatch[0]; // Include the ! prefix
+        
+        console.log(`📡 [WEB-SERIAL] Found node ID: ${nodeId}`);
+        
+        // Create or update node in database
+        await storage.upsertNode({
+          nodeId: nodeId,
+          name: `Node-${nodeId.slice(-4)}`,
+          shortName: nodeId.slice(-4),
+          hwModel: 'UNKNOWN',
+          isOnline: true,
+          lastSeen: new Date(),
+          batteryLevel: null,
+          voltage: null,
+          latitude: null,
+          longitude: null,
+          altitude: null,
+          rssi: null,
+          snr: null
+        });
+        
+        console.log(`✅ [WEB-SERIAL] Node ${nodeId} added to database`);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error processing Web Serial node data:', error);
+  }
+}
+
+// Process device info from Web Serial
+async function processWebSerialDeviceData(textData: string) {
+  try {
+    const lines = textData.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    
+    let deviceInfo: any = {};
+    
+    for (const line of lines) {
+      if (line.includes('myNodeNum:')) {
+        deviceInfo.myNodeNum = line.split(':')[1]?.trim();
+      }
+      if (line.includes('deviceId:')) {
+        deviceInfo.deviceId = line.split(':')[1]?.trim();
+      }
+    }
+    
+    if (deviceInfo.myNodeNum && deviceInfo.deviceId) {
+      console.log(`📱 [WEB-SERIAL] Device info found:`, deviceInfo);
+      
+      // Create the main device node
+      await storage.upsertNode({
+        nodeId: `!${deviceInfo.deviceId}`,
+        name: `My Device`,
+        shortName: 'ME',
+        hwModel: 'WEB_SERIAL',
+        isOnline: true,
+        lastSeen: new Date(),
+        batteryLevel: null,
+        voltage: null,
+        latitude: null,
+        longitude: null,
+        altitude: null,
+        rssi: null,
+        snr: null
+      });
+      
+      console.log(`✅ [WEB-SERIAL] Device node added to database`);
+    }
+  } catch (error) {
+    console.error('❌ Error processing Web Serial device data:', error);
+  }
+}
+
 // Role-based middleware
 const requireRole = (roles: string[]) => {
   return async (req: any, res: any, next: any) => {
@@ -65,6 +146,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating node:", error);
       res.status(500).json({ message: "Failed to create node" });
+    }
+  });
+
+  // Test endpoint to create sample nodes for development
+  app.post('/api/nodes/create-test', isAuthenticated, async (req, res) => {
+    try {
+      console.log('🧪 Creating test nodes...');
+      const testNodes = [
+        {
+          nodeId: '!ad75d1c4',
+          name: 'Test Node D1C4',
+          shortName: 'D1C4',
+          hwModel: 'TBEAM',
+          isOnline: true,
+          lastSeen: new Date(),
+          batteryLevel: 85,
+          voltage: 4.1,
+          rssi: -65,
+          snr: 8,
+          latitude: null,
+          longitude: null,
+          altitude: null,
+          macAddress: null,
+          hopsAway: null,
+          viaMqtt: false,
+          encryption: false,
+          publicKey: null,
+          firmwareVersion: null,
+          uptime: null,
+          channelUtilization: null,
+          airUtilTx: null
+        },
+        {
+          nodeId: '!ea8f884c',
+          name: 'Test Node 884C',
+          shortName: '884C',
+          hwModel: 'HELTEC_V3',
+          isOnline: true,
+          lastSeen: new Date(),
+          batteryLevel: 72,
+          voltage: 3.9,
+          rssi: -70,
+          snr: 6,
+          latitude: null,
+          longitude: null,
+          altitude: null,
+          macAddress: null,
+          hopsAway: null,
+          viaMqtt: false,
+          encryption: false,
+          publicKey: null,
+          firmwareVersion: null,
+          uptime: null,
+          channelUtilization: null,
+          airUtilTx: null
+        },
+        {
+          nodeId: '!da73e25c',
+          name: 'Test Node E25C',
+          shortName: 'E25C',
+          hwModel: 'RAK4631',
+          isOnline: false,
+          lastSeen: new Date(Date.now() - 300000), // 5 minutes ago
+          batteryLevel: 45,
+          voltage: 3.6,
+          rssi: -85,
+          snr: 2,
+          latitude: null,
+          longitude: null,
+          altitude: null,
+          macAddress: null,
+          hopsAway: null,
+          viaMqtt: false,
+          encryption: false,
+          publicKey: null,
+          firmwareVersion: null,
+          uptime: null,
+          channelUtilization: null,
+          airUtilTx: null
+        }
+      ];
+
+      const createdNodes = [];
+      for (const nodeData of testNodes) {
+        const node = await storage.upsertNode(nodeData);
+        createdNodes.push(node);
+        console.log(`✅ Test node created: ${node.nodeId}`);
+      }
+
+      res.json({ success: true, nodes: createdNodes, count: createdNodes.length });
+    } catch (error) {
+      console.error("❌ Error creating test nodes:", error);
+      res.status(500).json({ message: "Failed to create test nodes", error: error.message });
     }
   });
 
@@ -342,8 +516,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }, 10000);
 
-      // TODO: Parse the protobuf data to extract node information
-      // This would require implementing the Meshtastic protobuf parsing
+      // Parse text response for node information and device data
+      const textData = buffer.toString('utf8', 0, Math.min(buffer.length, 1024));
+      console.log(`📄 [WEB-SERIAL] Text data: ${textData}`);
+      
+      // Look for nodeDB information patterns
+      if (textData.includes('Node') || textData.includes('!')) {
+        console.log(`🔍 [WEB-SERIAL] Processing potential nodeDB data`);
+        await processWebSerialNodeData(textData);
+      }
+      
+      // Look for device info patterns
+      if (textData.includes('myNodeNum') || textData.includes('deviceId')) {
+        console.log(`📱 [WEB-SERIAL] Processing device info data`);
+        await processWebSerialDeviceData(textData);
+      }
       
       res.json({ success: true, processed: buffer.length });
     } catch (error) {
