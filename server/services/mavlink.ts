@@ -676,7 +676,7 @@ class MAVLinkService extends EventEmitter {
     this.emit("commandResult", { droneId, command: "set_mode", success: true });
   }
 
-  private async handleMAVLinkMessage(message: MAVLinkMessage) {
+  async handleMAVLinkMessage(message: MAVLinkMessage) {
     // Log all incoming MAVLink messages to console
     console.log("📡 MAVLink Message Received:", {
       system_id: message.system_id,

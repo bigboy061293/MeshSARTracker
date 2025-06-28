@@ -242,6 +242,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Web Serial MAVLink packet processing endpoint
+  app.post('/api/mavlink/process', async (req, res) => {
+    try {
+      const { packet } = req.body;
+      
+      if (!packet || typeof packet.systemId !== 'number' || typeof packet.messageId !== 'number') {
+        return res.status(400).json({ error: 'Invalid packet data' });
+      }
+
+      console.log(`🌐 Web Serial MAVLink packet: SysID=${packet.systemId}, MsgID=${packet.messageId}`);
+      
+      // Convert payload array back to buffer
+      const payloadBuffer = Buffer.from(packet.payload || []);
+      
+      // Create MAVLink message object for service processing
+      const mavlinkMessage = {
+        system_id: packet.systemId,
+        component_id: packet.componentId || 1,
+        message_id: packet.messageId,
+        payload: {}
+      };
+
+      // Parse payload based on message ID (common MAVLink messages)
+      switch (packet.messageId) {
+        case 0: // HEARTBEAT
+          if (payloadBuffer.length >= 9) {
+            mavlinkMessage.payload = {
+              type: payloadBuffer.readUInt8(0),
+              autopilot: payloadBuffer.readUInt8(1),
+              base_mode: payloadBuffer.readUInt8(2),
+              custom_mode: payloadBuffer.readUInt32LE(3),
+              system_status: payloadBuffer.readUInt8(7),
+              mavlink_version: payloadBuffer.readUInt8(8)
+            };
+          }
+          break;
+
+        case 33: // GLOBAL_POSITION_INT
+          if (payloadBuffer.length >= 28) {
+            mavlinkMessage.payload = {
+              time_boot_ms: payloadBuffer.readUInt32LE(0),
+              lat: payloadBuffer.readInt32LE(4),
+              lon: payloadBuffer.readInt32LE(8),
+              alt: payloadBuffer.readInt32LE(12),
+              relative_alt: payloadBuffer.readInt32LE(16),
+              vx: payloadBuffer.readInt16LE(20),
+              vy: payloadBuffer.readInt16LE(22),
+              vz: payloadBuffer.readInt16LE(24),
+              hdg: payloadBuffer.readUInt16LE(26)
+            };
+          }
+          break;
+
+        case 30: // ATTITUDE
+          if (payloadBuffer.length >= 28) {
+            mavlinkMessage.payload = {
+              time_boot_ms: payloadBuffer.readUInt32LE(0),
+              roll: payloadBuffer.readFloatLE(4),
+              pitch: payloadBuffer.readFloatLE(8),
+              yaw: payloadBuffer.readFloatLE(12),
+              rollspeed: payloadBuffer.readFloatLE(16),
+              pitchspeed: payloadBuffer.readFloatLE(20),
+              yawspeed: payloadBuffer.readFloatLE(24)
+            };
+          }
+          break;
+
+        case 147: // BATTERY_STATUS
+          if (payloadBuffer.length >= 36) {
+            const voltages = [];
+            for (let i = 0; i < 10; i++) {
+              voltages.push(payloadBuffer.readUInt16LE(8 + i * 2));
+            }
+            mavlinkMessage.payload = {
+              id: payloadBuffer.readUInt8(0),
+              battery_function: payloadBuffer.readUInt8(1),
+              type: payloadBuffer.readUInt8(2),
+              temperature: payloadBuffer.readInt16LE(3),
+              voltages: voltages,
+              current_battery: payloadBuffer.readInt16LE(28),
+              current_consumed: payloadBuffer.readInt32LE(30),
+              energy_consumed: payloadBuffer.readInt32LE(34),
+              battery_remaining: payloadBuffer.readInt8(35)
+            };
+          }
+          break;
+
+        default:
+          // For unknown messages, store raw payload
+          mavlinkMessage.payload = { raw: Array.from(payloadBuffer) };
+          break;
+      }
+
+      // Process through MAVLink service (similar to bridge data)
+      await mavlinkService.handleMAVLinkMessage(mavlinkMessage);
+      
+      res.json({ 
+        success: true, 
+        message: `Processed Web Serial MAVLink packet: ${packet.messageId}`,
+        timestamp: new Date().toISOString(),
+        systemId: packet.systemId,
+        messageId: packet.messageId
+      });
+      
+    } catch (error) {
+      console.error('Web Serial MAVLink processing error:', error);
+      res.status(500).json({ error: 'Failed to process Web Serial MAVLink packet' });
+    }
+  });
+
   // Settings endpoints
   app.get('/api/settings', isAuthenticated, async (req, res) => {
     try {
