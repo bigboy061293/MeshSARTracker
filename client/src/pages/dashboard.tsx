@@ -1,20 +1,16 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNodes } from "@/hooks/useNodes";
 import { useDrone } from "@/hooks/useDrone";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import TacticalMap from "@/components/maps/tactical-map";
-import NodeStatus from "@/components/monitoring/node-status";
 import SignalChart from "@/components/monitoring/signal-chart";
 import MessagePanel from "@/components/communications/message-panel";
 import DroneControlPanel from "@/components/drone/control-panel";
 import QRDialog from "@/components/ui/qr-dialog";
 import { 
-  Radio, 
   MessageSquare, 
   Focus, 
   Clock,
@@ -27,7 +23,6 @@ import type { SystemStatus } from "@/types";
 export default function Dashboard() {
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
-  const { nodes, getOnlineNodes } = useNodes();
   const { drones, getConnectedDrones } = useDrone();
   
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -35,19 +30,6 @@ export default function Dashboard() {
   const { data: status } = useQuery<SystemStatus>({
     queryKey: ['/api/status'],
     refetchInterval: 5000,
-    onError: (error) => {
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-    },
   });
 
   // Redirect if not authenticated
@@ -111,33 +93,12 @@ export default function Dashboard() {
     );
   }
 
-  const onlineNodes = getOnlineNodes();
   const connectedDrones = getConnectedDrones();
 
   return (
     <div className="p-6 space-y-6 bg-surface min-h-screen">
       {/* System Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-surface-variant border-gray-700">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-400">Active Nodes</p>
-                <p className="text-3xl font-bold text-secondary">
-                  {onlineNodes.length}
-                </p>
-              </div>
-              <Radio className="h-8 w-8 text-secondary" />
-            </div>
-            <div className="mt-4">
-              <div className="flex items-center text-sm text-secondary">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                <span>{status?.totalNodes || 0} total nodes</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="bg-surface-variant border-gray-700">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -163,7 +124,7 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-dark-muted">Focus Status</p>
+                <p className="text-sm text-dark-muted">UAS Status</p>
                 <p className="text-3xl font-bold text-secondary">
                   {connectedDrones.length > 0 ? 'Ready' : 'N/A'}
                 </p>
@@ -171,8 +132,9 @@ export default function Dashboard() {
               <Focus className="h-8 w-8 text-secondary" />
             </div>
             <div className="mt-4">
-              <div className="flex items-center text-sm text-dark-muted">
-                <span>{connectedDrones.length} connected</span>
+              <div className="flex items-center text-sm text-secondary">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                <span>{status?.connectedDrones || 0} connected</span>
               </div>
             </div>
           </CardContent>
@@ -182,133 +144,102 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-dark-muted">Mission Time</p>
+                <p className="text-sm text-dark-muted">Last Update</p>
                 <p className="text-3xl font-bold text-accent">
-                  {/* Will show active mission time */}
-                  --:--:--
+                  {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-accent" />
             </div>
             <div className="mt-4">
               <div className="flex items-center text-sm text-accent">
-                <span>No active mission</span>
+                <TrendingUp className="h-3 w-3 mr-1" />
+                <span>Live monitoring</span>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Tactical Map */}
-        <div className="lg:col-span-2">
-          <Card className="bg-surface-variant border-gray-700">
-            <CardHeader className="border-b border-gray-700">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold">Tactical Map</CardTitle>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={handleShareMap} className="border-gray-600">
-                    <Share2 className="h-4 w-4 mr-1" />
-                    Share View
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleFullscreen} className="border-gray-600">
-                    <Expand className="h-4 w-4 mr-1" />
-                    Fullscreen
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="h-96">
-                <TacticalMap nodes={nodes} drones={drones} />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* Node Status Panel */}
-        <div>
-          <Card className="bg-surface-variant border-gray-700">
-            <CardHeader className="border-b border-gray-700">
-              <CardTitle className="text-lg font-semibold">Node Status</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="h-96">
-                <NodeStatus nodes={nodes} />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Action Buttons */}
+      <div className="flex gap-4">
+        <Button 
+          variant="outline" 
+          onClick={handleShareMap}
+          className="flex items-center gap-2"
+        >
+          <Share2 className="h-4 w-4" />
+          Share View
+        </Button>
+        <Button 
+          variant="outline" 
+          onClick={handleFullscreen}
+          className="flex items-center gap-2"
+        >
+          <Expand className="h-4 w-4" />
+          Fullscreen
+        </Button>
       </div>
 
-      {/* Charts and Communications */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Real-time Signal Monitoring */}
-        <Card className="bg-surface-variant border-gray-700">
-          <CardHeader className="border-b border-gray-700">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">Signal Strength (RSSI)</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-64">
-              <SignalChart nodes={onlineNodes} />
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Communications Panel */}
-        <Card className="bg-surface-variant border-gray-700">
-          <CardHeader className="border-b border-gray-700">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">Team Communications</CardTitle>
-              <Button variant="outline" size="sm" className="border-gray-600">
-                <MessageSquare className="h-4 w-4 mr-1" />
-                Voice Call
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="h-80">
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="space-y-6">
+          {/* Tactical Map */}
+          <Card className="bg-surface-variant border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-dark-primary">Tactical Map</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-96">
+                <TacticalMap />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Drone Control Panel */}
+          <Card className="bg-surface-variant border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-dark-primary">UAS Control Mode</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DroneControlPanel />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-6">
+          {/* Message Panel */}
+          <Card className="bg-surface-variant border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-dark-primary">Communications</CardTitle>
+            </CardHeader>
+            <CardContent>
               <MessagePanel />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Signal Chart */}
+          <Card className="bg-surface-variant border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-dark-primary">Signal Monitor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <SignalChart data={[]} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Focus Control Panel */}
-      {connectedDrones.length > 0 && (
-        <Card className="bg-surface-variant border-gray-700">
-          <CardHeader className="border-b border-gray-700">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">
-                Focus Control - {connectedDrones[0]?.name}
-              </CardTitle>
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-2 text-sm">
-                  <div className="w-2 h-2 bg-secondary rounded-full animate-pulse"></div>
-                  <span>{connectedDrones[0]?.isConnected ? 'Connected' : 'Disconnected'}</span>
-                </div>
-                <Button variant="destructive" size="sm">
-                  Emergency Land
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <DroneControlPanel drone={connectedDrones[0]} />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* QR Code Share Dialog */}
+      {/* QR Dialog */}
       <QRDialog
         open={qrDialogOpen}
-        onOpenChange={setQrDialogOpen}
+        onClose={() => setQrDialogOpen(false)}
+        title="Share Dashboard View"
         url={window.location.href}
-        title="Share Dashboard"
-        description="Scan the QR code or copy the link to share this dashboard view with your team"
       />
     </div>
   );

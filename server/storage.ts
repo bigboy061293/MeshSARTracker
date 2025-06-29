@@ -1,6 +1,5 @@
 import {
   users,
-  nodes,
   messages,
   drones,
   missions,
@@ -8,8 +7,6 @@ import {
   settings,
   type User,
   type UpsertUser,
-  type Node,
-  type InsertNode,
   type Message,
   type InsertMessage,
   type Drone,
@@ -28,12 +25,6 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-
-  // Node operations
-  getAllNodes(): Promise<Node[]>;
-  getNode(nodeId: string): Promise<Node | undefined>;
-  upsertNode(node: InsertNode): Promise<Node>;
-  updateNodeStatus(nodeId: string, isOnline: boolean, lastSeen: Date): Promise<void>;
 
   // Message operations
   getRecentMessages(limit?: number): Promise<Message[]>;
@@ -83,38 +74,6 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
-  }
-
-  // Node operations
-  async getAllNodes(): Promise<Node[]> {
-    return await db.select().from(nodes).orderBy(desc(nodes.lastSeen));
-  }
-
-  async getNode(nodeId: string): Promise<Node | undefined> {
-    const [node] = await db.select().from(nodes).where(eq(nodes.nodeId, nodeId));
-    return node;
-  }
-
-  async upsertNode(nodeData: InsertNode): Promise<Node> {
-    const [node] = await db
-      .insert(nodes)
-      .values({ ...nodeData, updatedAt: new Date() })
-      .onConflictDoUpdate({
-        target: nodes.nodeId,
-        set: {
-          ...nodeData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return node;
-  }
-
-  async updateNodeStatus(nodeId: string, isOnline: boolean, lastSeen: Date): Promise<void> {
-    await db
-      .update(nodes)
-      .set({ isOnline, lastSeen, updatedAt: new Date() })
-      .where(eq(nodes.nodeId, nodeId));
   }
 
   // Message operations

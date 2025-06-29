@@ -19,7 +19,7 @@ const navigation = [
   { name: 'Tactical Map', href: '/map', icon: Map, roles: ['admin', 'user', 'watcher'] },
   { name: 'Communications', href: '/communications', icon: MessageSquare, roles: ['admin', 'user'] },
   { name: 'UAS Control Mode', href: '/drone-control', icon: Plane, roles: ['admin', 'user'] },
-  { name: 'Nodes Control Mode', href: '/nodes-control', icon: Radio, roles: ['admin', 'user'] },
+
   { name: 'Mission Planning', href: '/mission-planning', icon: Route, roles: ['admin', 'user'] },
   { name: 'Team Management', href: '/team-management', icon: Users, roles: ['admin'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin', 'user', 'watcher'] },

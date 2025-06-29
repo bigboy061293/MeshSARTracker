@@ -5,7 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupWebSocket } from "./services/websocket";
 import { meshtasticService } from "./services/meshtastic";
 import { mavlinkService } from "./services/mavlink";
-import { insertNodeSchema, insertMessageSchema, insertDroneSchema, insertMissionSchema, insertSharedMapSchema } from "@shared/schema";
+import { insertMessageSchema, insertDroneSchema, insertMissionSchema, insertSharedMapSchema } from "@shared/schema";
 
 // Helper function for formatting bytes
 function formatBytes(bytes: number): string {
@@ -43,101 +43,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
-
-  // Node management routes
-  app.get('/api/nodes', isAuthenticated, async (req, res) => {
-    try {
-      const nodes = await storage.getAllNodes();
-      res.json(nodes);
-    } catch (error) {
-      console.error("Error fetching nodes:", error);
-      res.status(500).json({ message: "Failed to fetch nodes" });
-    }
-  });
-
-  app.post('/api/nodes', isAuthenticated, requireRole(['admin']), async (req, res) => {
-    try {
-      const nodeData = insertNodeSchema.parse(req.body);
-      const node = await storage.upsertNode(nodeData);
-      res.json(node);
-    } catch (error) {
-      console.error("Error creating node:", error);
-      res.status(500).json({ message: "Failed to create node" });
-    }
-  });
-
-  // Update all node metadata
-  app.post('/api/nodes/update-metadata', isAuthenticated, requireRole(['admin', 'user']), async (req, res) => {
-    try {
-      console.log('🔄 [API] Starting metadata update for all nodes...');
-      
-      // Get all nodes from database
-      const allNodes = await storage.getAllNodes();
-      console.log(`📊 [API] Found ${allNodes.length} nodes to update`);
-      
-      let updatedCount = 0;
-      let unresponsiveCount = 0;
-      const unresponsiveNodes: string[] = [];
-      
-      // In a real implementation, this would query each node via Meshtastic protocol
-      // For now, we'll simulate the process and update some metadata
-      for (const node of allNodes) {
-        try {
-          // Simulate checking if node responds (in real implementation, this would be a Meshtastic query)
-          // For demonstration, we'll mark offline nodes as unresponsive
-          if (!node.isOnline) {
-            unresponsiveCount++;
-            unresponsiveNodes.push(node.shortName || node.nodeId);
-            console.log(`❌ [API] Node ${node.nodeId} (${node.shortName}) is unresponsive`);
-            continue;
-          }
-          
-          // Simulate metadata update for responsive nodes
-          // In real implementation, this would fetch fresh data from the node
-          const updatedMetadata = {
-            lastSeen: new Date(),
-            // Simulate slight variations in telemetry
-            batteryLevel: node.batteryLevel ? Math.floor(Math.max(0, Math.min(100, node.batteryLevel + (Math.random() - 0.5) * 5))) : undefined,
-            voltage: node.voltage ? Math.round((Math.max(3.0, Math.min(4.2, node.voltage + (Math.random() - 0.5) * 0.1))) * 10) / 10 : undefined,
-            rssi: node.rssi ? Math.floor(Math.max(-120, Math.min(-30, node.rssi + (Math.random() - 0.5) * 10))) : undefined,
-            snr: node.snr ? Math.floor(Math.max(-20, Math.min(20, node.snr + (Math.random() - 0.5) * 2))) : undefined,
-          };
-          
-          // Update the node in database
-          await storage.upsertNode({
-            nodeId: node.nodeId,
-            name: node.name,
-            shortName: node.shortName,
-            hwModel: node.hwModel,
-            isOnline: node.isOnline,
-            ...updatedMetadata,
-          });
-          
-          updatedCount++;
-          console.log(`✅ [API] Updated metadata for node ${node.nodeId} (${node.shortName})`);
-          
-        } catch (nodeError) {
-          console.error(`❌ [API] Failed to update node ${node.nodeId}:`, nodeError);
-          unresponsiveCount++;
-          unresponsiveNodes.push(node.shortName || node.nodeId);
-        }
-      }
-      
-      const result = {
-        updated: updatedCount,
-        unresponsive: unresponsiveCount,
-        unresponsiveNodes,
-        totalNodes: allNodes.length
-      };
-      
-      console.log('📊 [API] Metadata update completed:', result);
-      res.json(result);
-      
-    } catch (error) {
-      console.error("❌ [API] Error updating node metadata:", error);
-      res.status(500).json({ message: "Failed to update node metadata" });
     }
   });
 
@@ -258,14 +163,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System status route
   app.get('/api/status', isAuthenticated, async (req, res) => {
     try {
-      const nodes = await storage.getAllNodes();
       const drones = await storage.getAllDrones();
-      const activeNodes = nodes.filter(n => n.isOnline).length;
       const connectedDrones = drones.filter(d => d.isConnected).length;
       
       res.json({
-        activeNodes,
-        totalNodes: nodes.length,
         connectedDrones,
         totalDrones: drones.length,
         meshtasticConnected: meshtasticService.isConnected(),
