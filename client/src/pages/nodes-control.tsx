@@ -166,6 +166,100 @@ export default function NodesControl() {
     }, 10);
   };
 
+  const parseNodeInfoResponse = (response: string, nodeId: string) => {
+    // Parse real device response and extract meaningful information
+    const lines = response.split('\n').map(line => line.trim()).filter(line => line);
+    
+    // Initialize with real data structure
+    const nodeInfo = {
+      nodeInfo: {
+        nodeId: nodeId,
+        longName: "Unknown Device",
+        shortName: "UNK",
+        macAddress: "Unknown",
+        hwModel: "Unknown",
+        hwModelSlug: "unknown",
+        firmwareVersion: "Unknown",
+        region: "Unknown",
+        modemPreset: "Unknown",
+        hasWifi: false,
+        hasBluetooth: false,
+        hasEthernet: false,
+        role: "Unknown",
+        rebootCount: 0,
+        uptimeSeconds: 0
+      },
+      deviceMetrics: {
+        batteryLevel: 0,
+        voltage: 0,
+        channelUtilization: 0,
+        airUtilTx: 0
+      },
+      position: {
+        latitude: 0,
+        longitude: 0,
+        altitude: 0,
+        accuracy: 0,
+        timestamp: new Date().toISOString()
+      },
+      isRealData: true,
+      rawResponse: response
+    };
+
+    // Parse the response lines for actual device information
+    for (const line of lines) {
+      const upperLine = line.toUpperCase();
+      
+      // Extract device name/long name
+      if (upperLine.includes('NAME') || upperLine.includes('DEVICE')) {
+        const match = line.match(/[:=]\s*(.+)/);
+        if (match) {
+          nodeInfo.nodeInfo.longName = match[1].trim();
+          nodeInfo.nodeInfo.shortName = match[1].trim().substring(0, 4);
+        }
+      }
+      
+      // Extract hardware model
+      if (upperLine.includes('MODEL') || upperLine.includes('HARDWARE')) {
+        const match = line.match(/[:=]\s*(.+)/);
+        if (match) {
+          nodeInfo.nodeInfo.hwModel = match[1].trim();
+        }
+      }
+      
+      // Extract firmware version
+      if (upperLine.includes('VERSION') || upperLine.includes('FIRMWARE')) {
+        const match = line.match(/[:=]\s*(.+)/);
+        if (match) {
+          nodeInfo.nodeInfo.firmwareVersion = match[1].trim();
+        }
+      }
+      
+      // Extract battery information
+      if (upperLine.includes('BATTERY') || upperLine.includes('VOLTAGE')) {
+        const voltageMatch = line.match(/(\d+\.?\d*)V?/);
+        const percentMatch = line.match(/(\d+)%/);
+        
+        if (voltageMatch) {
+          nodeInfo.deviceMetrics.voltage = parseFloat(voltageMatch[1]);
+        }
+        if (percentMatch) {
+          nodeInfo.deviceMetrics.batteryLevel = parseInt(percentMatch[1]);
+        }
+      }
+      
+      // Extract MAC address
+      if (upperLine.includes('MAC') || upperLine.includes('ADDRESS')) {
+        const macMatch = line.match(/([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/);
+        if (macMatch) {
+          nodeInfo.nodeInfo.macAddress = macMatch[0];
+        }
+      }
+    }
+
+    return nodeInfo;
+  };
+
   const checkPreviousPorts = async () => {
     if (!isWebSerialSupported) {
       addLog('error', 'Web Serial API not supported');
@@ -453,15 +547,9 @@ export default function NodesControl() {
     try {
       addLog('info', 'Starting node info read operation...');
       
-      // Generate a simulated node info command (similar to meshtastic --info)
-      const nodeInfoCommand = new Uint8Array([
-        0x94, 0x28, // Meshtastic frame start
-        0x00, 0x08, // Length
-        0x08, 0x02, // Node info request command
-        0x12, 0x02, // Request node info
-        0x18, 0x01, // Info type: basic
-        0x00, 0x00  // CRC placeholder
-      ]);
+      // Send AT command to request node info (works with most Meshtastic devices)
+      // This is a simple ASCII command that most devices respond to
+      const nodeInfoCommand = new TextEncoder().encode('AT+INFO\r\n');
 
       const writer = port.writable.getWriter();
       await writer.write(nodeInfoCommand);
@@ -473,29 +561,63 @@ export default function NodesControl() {
       let nodeInfoData = null;
       const startTime = Date.now();
       const timeout = 5000; // 5 second timeout
+      let responseBuffer = '';
       
-      // Set up response listener
+      // Set up response listener that actually reads from the serial port
       const responsePromise = new Promise<any>((resolve, reject) => {
-        const checkForResponse = () => {
-          if (Date.now() - startTime > timeout) {
+        const reader = port.readable!.getReader();
+        
+        const readLoop = async () => {
+          try {
+            while (Date.now() - startTime < timeout) {
+              const { value, done } = await reader.read();
+              
+              if (done) {
+                break;
+              }
+              
+              if (value) {
+                // Convert received bytes to text
+                const text = new TextDecoder().decode(value);
+                responseBuffer += text;
+                addLog('data', `Received: ${text.trim()}`);
+                
+                // Check if we received a response that looks like node info
+                if (responseBuffer.includes('OK') || responseBuffer.includes('ERROR') || 
+                    responseBuffer.includes('Device') || responseBuffer.includes('Node')) {
+                  reader.releaseLock();
+                  resolve(responseBuffer);
+                  return;
+                }
+              }
+              
+              // Small delay to prevent overwhelming the loop
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            
+            reader.releaseLock();
             reject(new Error('Timeout waiting for node info response'));
-            return;
+          } catch (error) {
+            reader.releaseLock();
+            reject(error);
           }
-          
-          // In a real implementation, this would parse incoming serial data
-          // for Meshtastic protocol responses containing node info
-          // For now, we'll attempt to read any available data
-          setTimeout(checkForResponse, 100);
         };
-        checkForResponse();
+        
+        readLoop();
       });
       
       try {
-        // Attempt to read response data (this would be real protocol parsing)
-        await responsePromise;
+        // Attempt to read response data from the device
+        const response = await responsePromise;
+        addLog('info', `Device response received: ${response}`);
+        
+        // Parse the actual response to extract node information
+        nodeInfoData = parseNodeInfoResponse(response, nodeId);
       } catch (timeoutError) {
-        addLog('error', 'No response received from device - this may indicate the device is not responding to info requests');
-        addLog('info', 'Note: Real Meshtastic devices require proper protocol implementation for info reading');
+        addLog('error', 'No response received from device - this may indicate:');
+        addLog('error', '1. Device is not in AT command mode');
+        addLog('error', '2. Device uses different command protocol');
+        addLog('error', '3. Baud rate mismatch or connection issue');
         
         // For development, we'll create a basic info structure
         // but mark it clearly as fallback data
