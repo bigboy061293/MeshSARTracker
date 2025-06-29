@@ -55,9 +55,6 @@ function useWebSerialMeshtastic() {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string>("Disconnected");
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
-  const [meshNodes, setMeshNodes] = useState<any>(null);
-  const [devicePreferences, setDevicePreferences] = useState<any>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -79,13 +76,13 @@ function useWebSerialMeshtastic() {
       setConnectionStatus("Requesting device...");
       
       // Request a port and open a connection
-      // Note: The browser will show a device picker dialog
-      // Use no filters to show all devices (like official Meshtastic client)
-      const selectedPort = await navigator.serial.requestPort();
-
-      if (!selectedPort) {
-        throw new Error("No device selected");
-      }
+      const selectedPort = await navigator.serial.requestPort({
+        filters: [
+          { usbVendorId: 0x10C4, usbProductId: 0xEA60 }, // CP2102 USB to UART Bridge
+          { usbVendorId: 0x1A86, usbProductId: 0x7523 }, // CH340 USB to Serial
+          { usbVendorId: 0x0403, usbProductId: 0x6001 }, // FTDI USB Serial
+        ]
+      });
 
       setConnectionStatus("Opening connection...");
       await selectedPort.open({ baudRate: 115200 });
@@ -101,28 +98,13 @@ function useWebSerialMeshtastic() {
 
       // Start reading data
       startReading(selectedPort);
-      
-      // Start device info polling every 2 seconds
-      startDevicePolling(selectedPort);
 
     } catch (error) {
       console.error('Web Serial connection error:', error);
       setConnectionStatus("Connection Failed");
-      
-      let errorMessage = "Failed to connect to device";
-      if (error instanceof Error) {
-        if (error.message.includes("No port selected")) {
-          errorMessage = "No device was selected. Please try again and select a Meshtastic device from the dialog.";
-        } else if (error.message.includes("not supported")) {
-          errorMessage = "Web Serial is not supported. Please use Chrome 89+ or Edge 89+.";
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
       toast({
         title: "Connection Failed",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Failed to connect to device",
         variant: "destructive",
       });
     }
@@ -149,248 +131,27 @@ function useWebSerialMeshtastic() {
 
   const processReceivedData = useCallback(async (data: Uint8Array) => {
     try {
-      // Convert to text for easier parsing
-      const text = new TextDecoder().decode(data);
-      const timestamp = new Date().toISOString();
-      
-      console.log(`📥 [${timestamp}] RAW DATA:`, Array.from(data));
-      console.log(`📄 [${timestamp}] TEXT DATA:`, text);
-      
-      // Look for nodeDB information patterns
-      if (text.includes('Node')) {
-        console.log(`🔍 [${timestamp}] DETECTED NODE INFO:`, text);
-      }
-      
-      if (text.includes('!')) {
-        console.log(`📡 [${timestamp}] DETECTED NODE ID PATTERN:`, text);
-      }
-      
-      // Parse specific command responses
-      const parsedInfo = parseDeviceResponse(data);
-      if (parsedInfo) {
-        console.log(`✅ [${timestamp}] PARSED RESPONSE:`, parsedInfo);
-        
-        if (parsedInfo.type === 'device_info') {
-          setDeviceInfo(parsedInfo.data);
-          console.log(`📊 [${timestamp}] DEVICE INFO UPDATED:`, parsedInfo.data);
-        } else if (parsedInfo.type === 'mesh_nodes') {
-          setMeshNodes(parsedInfo.data);
-          console.log(`🌐 [${timestamp}] MESH NODES UPDATED:`, parsedInfo.data);
-        } else if (parsedInfo.type === 'preferences') {
-          setDevicePreferences(parsedInfo.data);
-          console.log(`⚙️ [${timestamp}] PREFERENCES UPDATED:`, parsedInfo.data);
-        }
-      }
-      
       // Send raw data to server for processing
       await apiRequest("/api/meshtastic/process-serial", "POST", {
         data: Array.from(data),
         timestamp: Date.now()
       });
       
-      // For testing purposes, create some sample node data if we detect node patterns
-      if (text.includes('!') && text.match(/!([a-f0-9]{8})/)) {
-        console.log(`🧪 [TEST] Creating test node data for development`);
-        try {
-          // Create test nodes from your known node IDs
-          const testNodes = ['!ad75d1c4', '!ea8f884c', '!da73e25c'];
-          for (const nodeId of testNodes) {
-            await apiRequest("/api/nodes", "POST", {
-              nodeId: nodeId,
-              name: `Test-${nodeId.slice(-4)}`,
-              shortName: nodeId.slice(-4).toUpperCase(),
-              hwModel: 'TBEAM',
-              isOnline: true,
-              lastSeen: new Date().toISOString(),
-              batteryLevel: Math.floor(Math.random() * 100),
-              voltage: 3.7 + Math.random(),
-              rssi: -80 + Math.floor(Math.random() * 40),
-              snr: 5 + Math.floor(Math.random() * 10)
-            });
-          }
-          console.log(`✅ [TEST] Test nodes created successfully`);
-        } catch (error) {
-          console.error('❌ [TEST] Failed to create test nodes:', error);
-        }
-      }
-      
       // Refresh nodes data
       queryClient.invalidateQueries({ queryKey: ["/api/nodes"] });
     } catch (error) {
-      console.error('❌ Data processing error:', error);
+      console.error('Data processing error:', error);
     }
   }, [queryClient]);
-
-  const parseDeviceResponse = (data: Uint8Array) => {
-    try {
-      const text = new TextDecoder().decode(data);
-      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-      
-      // Look for nodeDB patterns
-      if (text.includes('nodeDB') || text.includes('nodes:') || text.includes('Node:')) {
-        console.log('🌐 [NODEDB] Found node database response:', lines);
-        
-        const nodes: any = {};
-        let currentNode: any = null;
-        
-        for (const line of lines) {
-          // Look for node ID patterns like "!abcd1234"
-          const nodeIdMatch = line.match(/!([a-f0-9]{8})/);
-          if (nodeIdMatch) {
-            const nodeId = nodeIdMatch[1];
-            currentNode = { nodeId: nodeIdMatch[0], shortName: '', longName: '', lastSeen: new Date().toISOString() };
-            nodes[nodeId] = currentNode;
-            console.log('📡 [NODEDB] Found node ID:', nodeIdMatch[0]);
-          }
-          
-          // Parse node details
-          if (currentNode) {
-            if (line.includes('Short:')) {
-              currentNode.shortName = line.split('Short:')[1]?.trim() || '';
-            }
-            if (line.includes('Long:')) {
-              currentNode.longName = line.split('Long:')[1]?.trim() || '';
-            }
-            if (line.includes('SNR:')) {
-              currentNode.snr = parseFloat(line.split('SNR:')[1]?.trim() || '0');
-            }
-            if (line.includes('RSSI:')) {
-              currentNode.rssi = parseInt(line.split('RSSI:')[1]?.trim() || '0');
-            }
-          }
-        }
-        
-        if (Object.keys(nodes).length > 0) {
-          return {
-            type: 'mesh_nodes',
-            data: nodes
-          };
-        }
-      }
-      
-      // Look for device info patterns
-      if (text.includes('My info:') || text.includes('deviceId') || text.includes('myNodeNum')) {
-        console.log('📱 [DEVICE] Found device info response:', lines);
-        
-        const deviceInfo: any = {
-          lastResponse: new Date().toISOString()
-        };
-        
-        for (const line of lines) {
-          if (line.includes('myNodeNum:')) {
-            deviceInfo.myNodeNum = line.split(':')[1]?.trim();
-          }
-          if (line.includes('deviceId:')) {
-            deviceInfo.deviceId = line.split(':')[1]?.trim();
-          }
-          if (line.includes('firmware:')) {
-            deviceInfo.firmwareVersion = line.split(':')[1]?.trim();
-          }
-          if (line.includes('hwModel:')) {
-            deviceInfo.hwModel = line.split(':')[1]?.trim();
-          }
-          if (line.includes('rebootCount:')) {
-            deviceInfo.rebootCount = parseInt(line.split(':')[1]?.trim() || '0');
-          }
-        }
-        
-        return {
-          type: 'device_info',
-          data: deviceInfo
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('❌ Response parsing error:', error);
-      return null;
-    }
-  };
-
-  const sendMeshtasticCommand = useCallback(async (port: SerialPort, command: string) => {
-    if (!port || !port.writable) return;
-    
-    try {
-      const writer = port.writable.getWriter();
-      const encoder = new TextEncoder();
-      
-      // Send different command formats for better compatibility
-      const commands = [
-        command + '\r\n',
-        command + '\n',
-        command + '\r'
-      ];
-      
-      for (const cmd of commands) {
-        const commandData = encoder.encode(cmd);
-        await writer.write(commandData);
-        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay between attempts
-      }
-      
-      writer.releaseLock();
-      console.log(`📤 Sent Meshtastic command: ${command}`);
-    } catch (error) {
-      console.error('❌ Error sending command:', error);
-    }
-  }, []);
-
-  const startDevicePolling = useCallback((port: SerialPort) => {
-    // Clear any existing polling
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
-    
-    const interval = setInterval(async () => {
-      if (port && isConnected) {
-        console.log('🔄 [POLLING] Requesting nodeDB and device info...');
-        
-        // Request node database and device information
-        await sendMeshtasticCommand(port, '--nodes');
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        await sendMeshtasticCommand(port, '--info');
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        await sendMeshtasticCommand(port, '--get-canned-message');
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        await sendMeshtasticCommand(port, '--get-ringtone');
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        console.log('📊 [POLLING] Commands sent, waiting for responses...');
-      }
-    }, 2000); // Poll every 2 seconds
-    
-    setPollingInterval(interval);
-    
-    // Initial request after 1 second
-    setTimeout(async () => {
-      if (port && isConnected) {
-        console.log('🚀 [INITIAL] Starting nodeDB polling...');
-        await sendMeshtasticCommand(port, '--nodes');
-        await new Promise(resolve => setTimeout(resolve, 300));
-        await sendMeshtasticCommand(port, '--info');
-        console.log('✅ [INITIAL] Initial commands sent');
-      }
-    }, 1000);
-  }, [pollingInterval, isConnected, sendMeshtasticCommand]);
 
   const disconnect = useCallback(async () => {
     if (port) {
       try {
-        // Clear polling interval
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
-        }
-        
         await port.close();
         setPort(null);
         setIsConnected(false);
         setConnectionStatus("Disconnected");
         setDeviceInfo(null);
-        setMeshNodes(null);
-        setDevicePreferences(null);
         
         toast({
           title: "Device Disconnected",
@@ -400,15 +161,13 @@ function useWebSerialMeshtastic() {
         console.error('Disconnect error:', error);
       }
     }
-  }, [port, pollingInterval, toast]);
+  }, [port, toast]);
 
   return {
     isSupported: isWebSerialSupported,
     isConnected,
     connectionStatus,
     deviceInfo,
-    meshNodes,
-    devicePreferences,
     connect: connectToDevice,
     disconnect
   };
@@ -425,20 +184,12 @@ export default function NodesControl() {
   
   const webSerial = useWebSerialMeshtastic();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Fetch nodes data
   const { data: nodes = [], isLoading: nodesLoading } = useQuery<Node[]>({
     queryKey: ["/api/nodes"],
     refetchInterval: 3000, // Refresh every 3 seconds
   });
-
-  // Debug logging for nodes data
-  useEffect(() => {
-    console.log('🔍 [DEBUG] Nodes data updated:', nodes);
-    console.log('🔍 [DEBUG] Nodes count:', nodes?.length || 0);
-    console.log('🔍 [DEBUG] Loading state:', nodesLoading);
-  }, [nodes, nodesLoading]);
 
   // Fetch bridge status
   const { data: bridgeStatus } = useQuery<{ meshtastic?: BridgeStatus }>({
@@ -630,73 +381,10 @@ export default function NodesControl() {
                   <Alert>
                     <Usb className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>How to connect:</strong><br/>
-                      1. Connect your Meshtastic device via USB cable<br/>
-                      2. Click "Connect Device" and select your device from the browser dialog<br/>
-                      3. Supports all common devices: ESP32, T-Beam, Heltec, RAK, Tiny CDC (CH340/CH341), and native USB devices<br/>
-                      <em>Note: If your device doesn't appear in the filtered list, the system will automatically show all available serial devices.</em>
+                      Web Serial allows direct connection to Meshtastic devices via USB. 
+                      Supports CP2102, CH340, and FTDI USB-to-Serial adapters commonly used in Meshtastic devices.
                     </AlertDescription>
                   </Alert>
-
-                  {/* Device Info Display */}
-                  {webSerial.isConnected && (
-                    <div className="space-y-4">
-                      {webSerial.deviceInfo && (
-                        <div className="p-4 border rounded-lg">
-                          <h4 className="font-medium mb-3">Device Information</h4>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>
-                              <span className="text-muted-foreground">Device ID:</span>
-                              <span className="ml-2 font-mono">{webSerial.deviceInfo.deviceId}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Node Number:</span>
-                              <span className="ml-2 font-mono">{webSerial.deviceInfo.myNodeNum}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Firmware:</span>
-                              <span className="ml-2">{webSerial.deviceInfo.firmwareVersion}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Hardware:</span>
-                              <span className="ml-2">{webSerial.deviceInfo.hwModel}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Reboots:</span>
-                              <span className="ml-2">{webSerial.deviceInfo.rebootCount}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Last Response:</span>
-                              <span className="ml-2">{webSerial.deviceInfo.lastResponse}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {webSerial.meshNodes && (
-                        <div className="p-4 border rounded-lg">
-                          <h4 className="font-medium mb-3">Mesh Network Nodes</h4>
-                          <div className="text-sm">
-                            <p className="text-muted-foreground">
-                              {Object.keys(webSerial.meshNodes).length} nodes detected in mesh
-                            </p>
-                            <div className="mt-2 space-y-1">
-                              {Object.entries(webSerial.meshNodes).map(([nodeId, node]: [string, any]) => (
-                                <div key={nodeId} className="flex justify-between items-center">
-                                  <span className="font-mono text-xs">{nodeId}</span>
-                                  <span className="text-muted-foreground">{node.longName || 'Unknown'}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="text-xs text-muted-foreground">
-                        🔄 Polling device every 2 seconds for updated information
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </TabsContent>
@@ -782,35 +470,6 @@ export default function NodesControl() {
             <CardContent className="space-y-4">
               {/* Filters and Controls */}
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  onClick={async () => {
-                    try {
-                      console.log('🧪 [TEST] Button clicked - Creating test nodes...');
-                      const response = await apiRequest("/api/test/create-nodes", "POST", {});
-                      console.log('✅ [TEST] API Response:', response);
-                      
-                      // Force refresh the nodes query
-                      await queryClient.invalidateQueries({ queryKey: ["/api/nodes"] });
-                      await queryClient.refetchQueries({ queryKey: ["/api/nodes"] });
-                      
-                      toast({
-                        title: "Test Nodes Created",
-                        description: `Created ${(response as any).count || 'some'} test nodes successfully`,
-                      });
-                    } catch (error: any) {
-                      console.error('❌ [TEST] Failed to create test nodes:', error);
-                      toast({
-                        title: "Error",
-                        description: `Failed to create test nodes: ${error.message || 'Unknown error'}`,
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  variant="outline"
-                  className="w-fit bg-yellow-100 hover:bg-yellow-200"
-                >
-                  🧪 Create Test Nodes
-                </Button>
                 <div className="flex-1">
                   <Input
                     placeholder="Search nodes by name, short name, or ID..."
@@ -849,6 +508,49 @@ export default function NodesControl() {
                     <span className="text-sm whitespace-nowrap">Online only</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button 
+                  onClick={async () => {
+                    try {
+                      console.log('🔄 [UPDATE] Starting metadata update for all nodes...');
+                      const response = await apiRequest("POST", "/api/nodes/update-metadata", {});
+                      const result = await response.json();
+                      
+                      console.log('✅ [UPDATE] Metadata update completed:', result);
+                      
+                      // Refresh the nodes data
+                      await queryClient.invalidateQueries({ queryKey: ["/api/nodes"] });
+                      
+                      toast({
+                        title: "Metadata Update Complete",
+                        description: `Updated ${result.updated || 0} nodes. ${result.unresponsive || 0} nodes did not respond.`,
+                      });
+                      
+                      // Show unresponsive nodes if any
+                      if (result.unresponsive > 0 && result.unresponsiveNodes?.length > 0) {
+                        toast({
+                          title: "Unresponsive Nodes",
+                          description: `These nodes did not respond: ${result.unresponsiveNodes.join(', ')}`,
+                          variant: "destructive",
+                        });
+                      }
+                    } catch (error: any) {
+                      console.error('❌ [UPDATE] Failed to update metadata:', error);
+                      toast({
+                        title: "Update Failed",
+                        description: `Failed to update node metadata: ${error.message || 'Unknown error'}`,
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  variant="outline"
+                  className="bg-blue-100 hover:bg-blue-200"
+                >
+                  🔄 Update All Metadata
+                </Button>
               </div>
 
               {/* Nodes Table */}
