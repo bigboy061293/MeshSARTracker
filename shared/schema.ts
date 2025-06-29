@@ -136,6 +136,18 @@ export const settings = pgTable("settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// NodeDB table to store data read from connected Meshtastic nodes
+export const nodeDb = pgTable("node_db", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  nodeId: varchar("node_id", { length: 20 }).notNull(), // Connected node's ID
+  dataType: varchar("data_type", { length: 50 }).notNull(), // Type of data (nodes, messages, config, etc.)
+  rawData: jsonb("raw_data").notNull(), // Raw NodeDB data as JSON
+  parsedData: jsonb("parsed_data"), // Parsed/structured data
+  readAt: timestamp("read_at").defaultNow(),
+  dataSize: integer("data_size"), // Size of data in bytes
+  recordCount: integer("record_count"), // Number of records read
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   missions: many(missions),
@@ -231,3 +243,10 @@ export const insertSettingSchema = createInsertSchema(settings).omit({
 });
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
 export type Setting = typeof settings.$inferSelect;
+
+export const insertNodeDbSchema = createInsertSchema(nodeDb).omit({
+  id: true,
+  readAt: true,
+});
+export type InsertNodeDb = z.infer<typeof insertNodeDbSchema>;
+export type NodeDb = typeof nodeDb.$inferSelect;

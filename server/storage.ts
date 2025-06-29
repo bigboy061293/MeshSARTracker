@@ -6,6 +6,7 @@ import {
   missions,
   sharedMaps,
   settings,
+  nodeDb,
   type User,
   type UpsertUser,
   type Node,
@@ -20,6 +21,8 @@ import {
   type InsertSharedMap,
   type Setting,
   type InsertSetting,
+  type NodeDb,
+  type InsertNodeDb,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte } from "drizzle-orm";
@@ -61,6 +64,12 @@ export interface IStorage {
   getSetting(key: string): Promise<Setting | undefined>;
   setSetting(setting: InsertSetting): Promise<Setting>;
   getSettingsByCategory(category: string): Promise<Setting[]>;
+
+  // NodeDB operations
+  getNodeDbRecords(nodeId: string): Promise<NodeDb[]>;
+  getNodeDbRecord(nodeId: string, dataType: string): Promise<NodeDb | undefined>;
+  insertNodeDbRecord(record: InsertNodeDb): Promise<NodeDb>;
+  getLatestNodeDbRecord(nodeId: string): Promise<NodeDb | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -259,6 +268,43 @@ export class DatabaseStorage implements IStorage {
       .from(settings)
       .where(eq(settings.category, category))
       .orderBy(settings.key);
+  }
+
+  // NodeDB operations
+  async getNodeDbRecords(nodeId: string): Promise<NodeDb[]> {
+    return await db
+      .select()
+      .from(nodeDb)
+      .where(eq(nodeDb.nodeId, nodeId))
+      .orderBy(desc(nodeDb.readAt));
+  }
+
+  async getNodeDbRecord(nodeId: string, dataType: string): Promise<NodeDb | undefined> {
+    const [record] = await db
+      .select()
+      .from(nodeDb)
+      .where(and(eq(nodeDb.nodeId, nodeId), eq(nodeDb.dataType, dataType)))
+      .orderBy(desc(nodeDb.readAt))
+      .limit(1);
+    return record;
+  }
+
+  async insertNodeDbRecord(recordData: InsertNodeDb): Promise<NodeDb> {
+    const [record] = await db
+      .insert(nodeDb)
+      .values(recordData)
+      .returning();
+    return record;
+  }
+
+  async getLatestNodeDbRecord(nodeId: string): Promise<NodeDb | undefined> {
+    const [record] = await db
+      .select()
+      .from(nodeDb)
+      .where(eq(nodeDb.nodeId, nodeId))
+      .orderBy(desc(nodeDb.readAt))
+      .limit(1);
+    return record;
   }
 }
 

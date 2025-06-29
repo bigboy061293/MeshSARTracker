@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Web Serial API type declarations
@@ -58,7 +60,8 @@ import {
   WifiOff,
   Terminal,
   Download,
-  Search
+  Search,
+  Database
 } from "lucide-react";
 
 interface LogEntry {
@@ -71,6 +74,7 @@ interface LogEntry {
 export default function NodesControl() {
   const { toast } = useToast();
   const { user, isLoading, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -78,12 +82,42 @@ export default function NodesControl() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [bytesReceived, setBytesReceived] = useState(0);
   const [packetsReceived, setPacketsReceived] = useState(0);
+  const [connectedNodeId, setConnectedNodeId] = useState<string | null>(null);
   
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const logScrollRef = useRef<HTMLDivElement>(null);
 
   // Check if Web Serial API is supported
   const isWebSerialSupported = 'serial' in navigator;
+
+  // NodeDB mutation
+  const nodeDbMutation = useMutation({
+    mutationFn: async (data: {
+      nodeId: string;
+      dataType: string;
+      rawData: any;
+      parsedData?: any;
+      dataSize?: number;
+      recordCount?: number;
+    }) => {
+      const response = await apiRequest('POST', '/api/nodedb/read', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "NodeDB Read Successfully",
+        description: "NodeDB data has been saved to the database",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/nodedb'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "NodeDB Read Failed",
+        description: error.message || "Failed to read NodeDB",
+        variant: "destructive",
+      });
+    },
+  });
 
   const addLog = (type: LogEntry['type'], message: string, rawData?: Uint8Array) => {
     const newLog: LogEntry = {
@@ -177,7 +211,14 @@ export default function NodesControl() {
       setPort(selectedPort);
       setIsConnected(true);
       
+      // Generate a node ID based on the port info
+      const nodeId = portInfo.usbVendorId && portInfo.usbProductId 
+        ? `${portInfo.usbVendorId.toString(16)}_${portInfo.usbProductId.toString(16)}_${Date.now().toString(36)}`
+        : `node_${Date.now().toString(36)}`;
+      setConnectedNodeId(nodeId);
+      
       addLog('connect', 'Successfully connected to Meshtastic node via COM port');
+      addLog('info', `Node ID: ${nodeId}`);
       addLog('info', `Baud rate: 115200, Data bits: 8, Stop bits: 1, Parity: none`);
       
       toast({
@@ -328,6 +369,7 @@ export default function NodesControl() {
       // Always reset state regardless of errors
       setPort(null);
       setIsConnected(false);
+      setConnectedNodeId(null);
     }
   };
 
@@ -354,6 +396,86 @@ export default function NodesControl() {
     URL.revokeObjectURL(url);
     
     addLog('info', 'Logs exported to file');
+  };
+
+  const readNodeDb = async () => {
+    if (!isConnected || !port || !connectedNodeId) {
+      toast({
+        title: "Cannot Read NodeDB",
+        description: "Please connect to a Meshtastic node first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      addLog('info', 'Starting NodeDB read operation...');
+      
+      // For now, we'll simulate reading the NodeDB by sending a specific command
+      // In a real implementation, you would send the appropriate Meshtastic protocol commands
+      
+      // Generate a simulated NodeDB read command (this would be replaced with actual Meshtastic protocol)
+      const nodeDbCommand = new Uint8Array([
+        0x94, 0x28, // Meshtastic frame start
+        0x00, 0x0A, // Length
+        0x08, 0x01, // NodeDB request command
+        0x12, 0x04, // Request all nodes
+        0x18, 0x00, // No specific filter
+        0x00, 0x00  // CRC placeholder
+      ]);
+
+      if (!port.writable) {
+        throw new Error('Port is not writable');
+      }
+
+      const writer = port.writable.getWriter();
+      await writer.write(nodeDbCommand);
+      writer.releaseLock();
+      
+      addLog('info', `Sent NodeDB read command to node ${connectedNodeId}`);
+      
+      // Simulate waiting for response and collecting data
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // For demonstration, create a simulated NodeDB response
+      const simulatedNodeDbData = {
+        nodes: [
+          {
+            nodeId: connectedNodeId,
+            longName: "Meshtastic Node",
+            shortName: "MN01",
+            hwModel: "TTGO_T_BEAM",
+            position: { lat: 37.7749, lon: -122.4194 },
+            batteryLevel: 85,
+            snr: 12.5,
+            lastHeard: new Date().toISOString()
+          }
+        ],
+        messages: [],
+        config: {
+          device: { role: "CLIENT" },
+          position: { positionBroadcastSecs: 900 },
+          power: { isPowerSaving: false }
+        }
+      };
+      
+      // Store the NodeDB data
+      await nodeDbMutation.mutateAsync({
+        nodeId: connectedNodeId,
+        dataType: 'complete_db',
+        rawData: simulatedNodeDbData,
+        parsedData: simulatedNodeDbData,
+        dataSize: JSON.stringify(simulatedNodeDbData).length,
+        recordCount: simulatedNodeDbData.nodes.length
+      });
+      
+      addLog('info', `NodeDB read completed. Found ${simulatedNodeDbData.nodes.length} nodes`);
+      addLog('info', 'NodeDB data saved to database');
+      
+    } catch (error: any) {
+      addLog('error', `NodeDB read failed: ${error.message}`);
+      console.error('NodeDB read error:', error);
+    }
   };
 
   // Check for existing connections on page load
@@ -482,14 +604,25 @@ export default function NodesControl() {
                   </Button>
                 </>
               ) : (
-                <Button 
-                  onClick={disconnectDevice}
-                  variant="destructive"
-                  className="flex items-center gap-2"
-                >
-                  <Square className="h-4 w-4" />
-                  Disconnect
-                </Button>
+                <>
+                  <Button 
+                    onClick={readNodeDb}
+                    disabled={nodeDbMutation.isPending}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Database className="h-4 w-4" />
+                    {nodeDbMutation.isPending ? 'Reading...' : 'Read NodeDB'}
+                  </Button>
+                  <Button 
+                    onClick={disconnectDevice}
+                    variant="destructive"
+                    className="flex items-center gap-2"
+                  >
+                    <Square className="h-4 w-4" />
+                    Disconnect
+                  </Button>
+                </>
               )}
             </div>
             

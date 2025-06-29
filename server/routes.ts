@@ -451,6 +451,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // NodeDB routes
+  app.get('/api/nodedb/:nodeId', isAuthenticated, async (req, res) => {
+    try {
+      const { nodeId } = req.params;
+      const records = await storage.getNodeDbRecords(nodeId);
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching NodeDB records:", error);
+      res.status(500).json({ message: "Failed to fetch NodeDB records" });
+    }
+  });
+
+  app.post('/api/nodedb/read', isAuthenticated, async (req, res) => {
+    try {
+      const { nodeId, dataType, rawData, parsedData, dataSize, recordCount } = req.body;
+      
+      if (!nodeId || !dataType || !rawData) {
+        return res.status(400).json({ message: "Missing required fields: nodeId, dataType, rawData" });
+      }
+
+      const record = await storage.insertNodeDbRecord({
+        nodeId,
+        dataType,
+        rawData,
+        parsedData,
+        dataSize,
+        recordCount
+      });
+
+      res.json(record);
+    } catch (error) {
+      console.error("Error storing NodeDB record:", error);
+      res.status(500).json({ message: "Failed to store NodeDB record" });
+    }
+  });
+
+  app.get('/api/nodedb/:nodeId/latest', isAuthenticated, async (req, res) => {
+    try {
+      const { nodeId } = req.params;
+      const record = await storage.getLatestNodeDbRecord(nodeId);
+      res.json(record || null);
+    } catch (error) {
+      console.error("Error fetching latest NodeDB record:", error);
+      res.status(500).json({ message: "Failed to fetch latest NodeDB record" });
+    }
+  });
+
   // Setup WebSocket server
   setupWebSocket(httpServer);
   
