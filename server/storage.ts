@@ -87,34 +87,19 @@ export class DatabaseStorage implements IStorage {
 
   // Node operations
   async getAllNodes(): Promise<Node[]> {
-    return await db.select().from(nodes).orderBy(desc(nodes.lastSeen));
+    return [];
   }
 
   async getNode(nodeId: string): Promise<Node | undefined> {
-    const [node] = await db.select().from(nodes).where(eq(nodes.nodeId, nodeId));
-    return node;
+    return undefined;
   }
 
   async upsertNode(nodeData: InsertNode): Promise<Node> {
-    const [node] = await db
-      .insert(nodes)
-      .values({ ...nodeData, updatedAt: new Date() })
-      .onConflictDoUpdate({
-        target: nodes.nodeId,
-        set: {
-          ...nodeData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return node;
+    throw new Error("Node operations not available - use Web Serial API for direct connection");
   }
 
   async updateNodeStatus(nodeId: string, isOnline: boolean, lastSeen: Date): Promise<void> {
-    await db
-      .update(nodes)
-      .set({ isOnline, lastSeen, updatedAt: new Date() })
-      .where(eq(nodes.nodeId, nodeId));
+    // No-op - Web Serial API handles connection status
   }
 
   // Message operations

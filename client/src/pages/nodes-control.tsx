@@ -115,20 +115,17 @@ export default function NodesControl() {
     setIsConnecting(true);
     
     try {
-      // Request a port
+      // Request a port - use broader filters or no filters to show all devices
       const selectedPort = await navigator.serial.requestPort({
-        filters: [
-          // Common Meshtastic device filters
-          { usbVendorId: 0x303a }, // Espressif ESP32
-          { usbVendorId: 0x10c4 }, // Silicon Labs CP210x
-          { usbVendorId: 0x1a86 }, // QinHeng Electronics CH340
-          { usbVendorId: 0x0403 }, // FTDI
-        ]
+        // No filters to allow selection of any COM port including COM6
       });
 
-      addLog('connect', 'Serial port selected, attempting connection...');
+      // Get device info before connecting
+      const portInfo = selectedPort.getInfo();
+      addLog('connect', `Serial port selected: USB Vendor ID: ${portInfo.usbVendorId ? '0x' + portInfo.usbVendorId.toString(16) : 'Unknown'}, Product ID: ${portInfo.usbProductId ? '0x' + portInfo.usbProductId.toString(16) : 'Unknown'}`);
+      addLog('connect', 'Attempting connection...');
 
-      // Open the port
+      // Open the port with settings suitable for Meshtastic devices
       await selectedPort.open({ 
         baudRate: 115200,
         dataBits: 8,
