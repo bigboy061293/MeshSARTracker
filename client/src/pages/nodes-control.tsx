@@ -399,13 +399,27 @@ export default function NodesControl() {
   };
 
   const readNodeDb = async () => {
-    if (!isConnected || !port || !connectedNodeId) {
+    // Debug logging
+    console.log('ReadNodeDB clicked:', { isConnected, port: !!port, connectedNodeId });
+    
+    if (!isConnected || !port) {
       toast({
         title: "Cannot Read NodeDB",
         description: "Please connect to a Meshtastic node first",
         variant: "destructive",
       });
       return;
+    }
+
+    // If no node ID is set, generate one now
+    let nodeId: string = connectedNodeId || '';
+    if (!nodeId) {
+      const portInfo = port.getInfo();
+      nodeId = portInfo.usbVendorId && portInfo.usbProductId 
+        ? `${portInfo.usbVendorId.toString(16)}_${portInfo.usbProductId.toString(16)}_${Date.now().toString(36)}`
+        : `node_${Date.now().toString(36)}`;
+      setConnectedNodeId(nodeId);
+      addLog('info', `Generated node ID: ${nodeId}`);
     }
 
     try {
@@ -432,7 +446,7 @@ export default function NodesControl() {
       await writer.write(nodeDbCommand);
       writer.releaseLock();
       
-      addLog('info', `Sent NodeDB read command to node ${connectedNodeId}`);
+      addLog('info', `Sent NodeDB read command to node ${nodeId}`);
       
       // Simulate waiting for response and collecting data
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -441,7 +455,7 @@ export default function NodesControl() {
       const simulatedNodeDbData = {
         nodes: [
           {
-            nodeId: connectedNodeId,
+            nodeId: nodeId,
             longName: "Meshtastic Node",
             shortName: "MN01",
             hwModel: "TTGO_T_BEAM",
@@ -461,7 +475,7 @@ export default function NodesControl() {
       
       // Store the NodeDB data
       await nodeDbMutation.mutateAsync({
-        nodeId: connectedNodeId,
+        nodeId: nodeId,
         dataType: 'complete_db',
         rawData: simulatedNodeDbData,
         parsedData: simulatedNodeDbData,
