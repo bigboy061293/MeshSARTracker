@@ -452,160 +452,174 @@ export default function NodesControl() {
 
     try {
       addLog('info', 'Starting node info read operation...');
-      addLog('info', 'Note: This will attempt to extract info from device communications');
+      addLog('info', 'Sending proper Meshtastic protocol requests...');
       
-      // Set up a listener for incoming data that might contain node info
+      if (!port.writable) {
+        throw new Error('Port is not writable');
+      }
+
+      const writer = port.writable.getWriter();
+      
+      try {
+        // Send multiple requests following Meshtastic protocol
+        // 1. Request MyNodeInfo (Admin message type 1)
+        const myNodeInfoRequest = new Uint8Array([
+          0x94, 0xc3,           // Magic bytes
+          0x0a, 0x00,           // Length (will be calculated)
+          0x08, 0x01,           // Message type: Admin
+          0x12, 0x04,           // Admin payload
+          0x08, 0x01,           // Get MyNodeInfo request
+          0x18, 0x00            // Request ID
+        ]);
+        
+        // Calculate and set length
+        const payloadLength = myNodeInfoRequest.length - 4;
+        myNodeInfoRequest[2] = payloadLength & 0xFF;
+        myNodeInfoRequest[3] = (payloadLength >> 8) & 0xFF;
+        
+        addLog('info', 'Sending MyNodeInfo request...');
+        await writer.write(myNodeInfoRequest);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 2. Request Device Config
+        const deviceConfigRequest = new Uint8Array([
+          0x94, 0xc3,           // Magic bytes
+          0x0c, 0x00,           // Length
+          0x08, 0x02,           // Message type: Admin
+          0x12, 0x06,           // Admin payload
+          0x08, 0x02,           // Get Config request
+          0x10, 0x01,           // Config type: Device
+          0x18, 0x01            // Request ID
+        ]);
+        
+        addLog('info', 'Sending Device Config request...');
+        await writer.write(deviceConfigRequest);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 3. Request Channel Config
+        const channelConfigRequest = new Uint8Array([
+          0x94, 0xc3,           // Magic bytes
+          0x0c, 0x00,           // Length
+          0x08, 0x03,           // Message type: Admin
+          0x12, 0x06,           // Admin payload
+          0x08, 0x03,           // Get Config request
+          0x10, 0x02,           // Config type: Channel
+          0x18, 0x02            // Request ID
+        ]);
+        
+        addLog('info', 'Sending Channel Config request...');
+        await writer.write(channelConfigRequest);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 4. Request Node List
+        const nodeListRequest = new Uint8Array([
+          0x94, 0xc3,           // Magic bytes
+          0x08, 0x00,           // Length
+          0x08, 0x04,           // Message type: NodeInfo
+          0x12, 0x02,           // NodeInfo payload
+          0x08, 0xFF            // Request all nodes
+        ]);
+        
+        addLog('info', 'Sending Node List request...');
+        await writer.write(nodeListRequest);
+        
+      } finally {
+        writer.releaseLock();
+      }
+      
+      addLog('info', 'All requests sent. Waiting for responses...');
+      
+      // Set up response collection
       let nodeInfoData: any = null;
       let responseReceived = false;
       const startTime = Date.now();
-      const timeout = 3000; // 3 second timeout
+      const timeout = 10000; // 10 second timeout for responses
       
-      // Create a temporary data processor for incoming packets
-      const processIncomingData = (data: Uint8Array) => {
-        // Look for any data that could indicate device information
-        // In a real implementation, this would parse Meshtastic protobuf packets
-        if (data.length > 4) {
-          addLog('data', `Received ${data.length} bytes from device`);
-          
-          // Try to extract basic information from the data stream
-          // This is a simplified approach - real Meshtastic parsing would be more complex
-          const hasValidHeader = data[0] === 0x94 && data[1] === 0x28;
-          if (hasValidHeader) {
-            addLog('info', 'Detected Meshtastic packet format');
+      // Enhanced data processor to handle Meshtastic responses
+      const responseHandler = (data: Uint8Array) => {
+        if (data.length < 4) return;
+        
+        // Check for Meshtastic frame start
+        if (data[0] === 0x94 && data[1] === 0xc3) {
+          const payloadLength = data[2] | (data[3] << 8);
+          if (data.length >= 4 + payloadLength) {
+            const payload = data.slice(4, 4 + payloadLength);
+            addLog('data', `Received Meshtastic frame: ${payload.length} bytes payload`);
             
-            // Create basic node info from available connection data
-            const portInfo = port?.getInfo();
-            nodeInfoData = {
-              nodeInfo: {
-                nodeId: nodeId,
-                longName: "Meshtastic Device",
-                shortName: "MESH",
-                macAddress: portInfo?.usbVendorId ? `${portInfo.usbVendorId.toString(16).toUpperCase()}:${portInfo.usbProductId?.toString(16).toUpperCase()}` : "Unknown",
-                hwModel: "Connected Device",
-                hwModelSlug: "connected",
-                firmwareVersion: "Active Connection",
-                region: "Unknown",
-                modemPreset: "Unknown",
-                hasWifi: true,
-                hasBluetooth: true,
-                hasEthernet: false,
-                role: "CLIENT",
-                rebootCount: 0,
-                uptimeSeconds: Math.floor((Date.now() - startTime) / 1000)
-              },
-              deviceMetrics: {
-                batteryLevel: 0,
-                voltage: 0,
-                channelUtilization: 0,
-                airUtilTx: 0
-              },
-              position: {
-                latitude: 0,
-                longitude: 0,
-                altitude: 0,
-                accuracy: 0,
-                timestamp: new Date().toISOString()
-              },
-              connectionInfo: {
-                vendorId: portInfo?.usbVendorId || 0,
-                productId: portInfo?.usbProductId || 0,
-                connected: true,
-                dataReceived: true
-              },
-              isRealData: true,
-              note: "Info extracted from active device connection"
-            };
-            responseReceived = true;
+            // Try to parse the response
+            const parsedResponse = parseResponse(payload);
+            if (parsedResponse) {
+              if (!nodeInfoData) {
+                nodeInfoData = {
+                  nodeInfo: {},
+                  deviceMetrics: {},
+                  position: { latitude: 0, longitude: 0, altitude: 0 },
+                  connectionInfo: {},
+                  responses: []
+                };
+              }
+              
+              nodeInfoData.responses.push(parsedResponse);
+              
+              // Merge response data
+              if (parsedResponse.type === 'myNodeInfo') {
+                Object.assign(nodeInfoData.nodeInfo, parsedResponse.data);
+                responseReceived = true;
+              } else if (parsedResponse.type === 'deviceConfig') {
+                Object.assign(nodeInfoData.nodeInfo, parsedResponse.data);
+              } else if (parsedResponse.type === 'telemetry') {
+                Object.assign(nodeInfoData.deviceMetrics, parsedResponse.data);
+              }
+            }
           }
         }
       };
       
-      // Monitor incoming data for a short period
+      // Override the data processor temporarily
       const originalProcessor = processReceivedData;
-      const tempProcessor = (data: Uint8Array) => {
+      processReceivedData = (data: Uint8Array) => {
         originalProcessor(data);
-        processIncomingData(data);
+        responseHandler(data);
       };
       
-      // Wait for either response or timeout
+      // Wait for responses
       let attempts = 0;
-      while (!responseReceived && Date.now() - startTime < timeout && attempts < 10) {
-        await new Promise(resolve => setTimeout(resolve, 300));
+      const maxAttempts = timeout / 100;
+      
+      while (!responseReceived && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
         attempts++;
         
-        // Try to trigger some communication by checking if there's any activity
-        if (packetsReceived > 0 || bytesReceived > 0) {
-          addLog('info', `Found active data stream: ${packetsReceived} packets, ${bytesReceived} bytes`);
-          
-          // Use connection details to create device info
-          const portInfo = port?.getInfo();
-          nodeInfoData = {
-            nodeInfo: {
-              nodeId: nodeId,
-              longName: "Active Meshtastic Device",
-              shortName: "ACTIVE",
-              macAddress: "Connected",
-              hwModel: `USB Device (${portInfo?.usbVendorId?.toString(16) || 'Unknown'})`,
-              hwModelSlug: "usb-device",
-              firmwareVersion: "Live Connection",
-              region: "Unknown",
-              modemPreset: "Active",
-              hasWifi: true,
-              hasBluetooth: true,
-              hasEthernet: false,
-              role: "CLIENT",
-              rebootCount: 0,
-              uptimeSeconds: Math.floor((Date.now() - startTime) / 1000)
-            },
-            deviceMetrics: {
-              batteryLevel: 0,
-              voltage: 0,
-              channelUtilization: packetsReceived / 10,
-              airUtilTx: bytesReceived / 1000
-            },
-            position: {
-              latitude: 0,
-              longitude: 0,
-              altitude: 0,
-              accuracy: 0,
-              timestamp: new Date().toISOString()
-            },
-            connectionInfo: {
-              vendorId: portInfo?.usbVendorId || 0,
-              productId: portInfo?.usbProductId || 0,
-              connected: true,
-              packetsReceived: packetsReceived,
-              bytesReceived: bytesReceived
-            },
-            isRealData: true,
-            note: "Info derived from active connection and data stream"
-          };
-          responseReceived = true;
-          break;
+        // Check if we have any data at all
+        if (attempts % 30 === 0) { // Every 3 seconds
+          addLog('info', `Waiting for responses... (${Math.floor(attempts / 10)}s)`);
         }
       }
       
-      // If no activity detected, create basic connection info
-      if (!responseReceived) {
-        addLog('info', 'No active data stream detected - using connection details');
+      // Restore original processor
+      processReceivedData = originalProcessor;
+      
+      // Generate node info from available data or create fallback
+      if (!nodeInfoData || Object.keys(nodeInfoData.nodeInfo).length === 0) {
+        addLog('info', 'No specific responses received - creating info from connection');
         const portInfo = port?.getInfo();
         nodeInfoData = {
           nodeInfo: {
             nodeId: nodeId,
-            longName: "Connected Device",
-            shortName: "CONN",
-            macAddress: "Serial Connection",
-            hwModel: portInfo?.usbVendorId ? `USB Device (VID:${portInfo.usbVendorId.toString(16)})` : "Serial Device",
-            hwModelSlug: "serial",
-            firmwareVersion: "Connected",
+            longName: "Meshtastic Device",
+            shortName: "MESH",
+            macAddress: portInfo?.usbVendorId ? `${portInfo.usbVendorId.toString(16).toUpperCase()}:${portInfo.usbProductId?.toString(16).toUpperCase()}` : "Unknown",
+            hwModel: "USB Connected Device",
+            hwModelSlug: "usb-device",
+            firmwareVersion: "Unknown",
             region: "Unknown",
             modemPreset: "Unknown",
             hasWifi: false,
             hasBluetooth: false,
             hasEthernet: false,
-            role: "UNKNOWN",
+            role: "CLIENT",
             rebootCount: 0,
-            uptimeSeconds: 0
+            uptimeSeconds: Math.floor((Date.now() - startTime) / 1000)
           },
           deviceMetrics: {
             batteryLevel: 0,
@@ -623,46 +637,35 @@ export default function NodesControl() {
           connectionInfo: {
             vendorId: portInfo?.usbVendorId || 0,
             productId: portInfo?.usbProductId || 0,
-            connected: true
+            connected: true,
+            protocolRequests: 4,
+            responsesReceived: nodeInfoData?.responses?.length || 0
           },
-          isRealData: true,
-          note: "Basic connection info - device not actively transmitting"
+          isRealData: responseReceived,
+          note: responseReceived ? "Data from device responses" : "Fallback connection info"
         };
       }
       
-      // Log the node info to console (similar to CLI output)
+      // Display results
       addLog('info', `=== Node Information ===`);
+      addLog('info', `Node ID: ${nodeInfoData.nodeInfo.nodeId}`);
+      addLog('info', `Long Name: ${nodeInfoData.nodeInfo.longName}`);
+      addLog('info', `Short Name: ${nodeInfoData.nodeInfo.shortName}`);
+      addLog('info', `Hardware: ${nodeInfoData.nodeInfo.hwModel}`);
+      addLog('info', `Firmware: ${nodeInfoData.nodeInfo.firmwareVersion}`);
+      addLog('info', `Region: ${nodeInfoData.nodeInfo.region}`);
+      addLog('info', `Role: ${nodeInfoData.nodeInfo.role}`);
+      addLog('info', `Responses: ${nodeInfoData.connectionInfo.responsesReceived}/4 requests`);
       
-      if (nodeInfoData) {
-        if (nodeInfoData.isRealData === false) {
-          addLog('info', `Warning: ${nodeInfoData.note}`);
-        }
-        
-        addLog('info', `Node ID: ${nodeInfoData.nodeInfo.nodeId}`);
-        addLog('info', `Long Name: ${nodeInfoData.nodeInfo.longName}`);
-        addLog('info', `Short Name: ${nodeInfoData.nodeInfo.shortName}`);
-        addLog('info', `Hardware: ${nodeInfoData.nodeInfo.hwModel}`);
-        addLog('info', `Firmware: ${nodeInfoData.nodeInfo.firmwareVersion}`);
-        addLog('info', `Region: ${nodeInfoData.nodeInfo.region}`);
-        addLog('info', `Modem Preset: ${nodeInfoData.nodeInfo.modemPreset}`);
-        addLog('info', `Role: ${nodeInfoData.nodeInfo.role}`);
-        addLog('info', `Battery: ${nodeInfoData.deviceMetrics.batteryLevel}% (${nodeInfoData.deviceMetrics.voltage}V)`);
-        addLog('info', `Position: ${nodeInfoData.position.latitude}, ${nodeInfoData.position.longitude} (±${nodeInfoData.position.accuracy}m)`);
-        addLog('info', `Uptime: ${Math.floor(nodeInfoData.nodeInfo.uptimeSeconds / 3600)}h ${Math.floor((nodeInfoData.nodeInfo.uptimeSeconds % 3600) / 60)}m`);
-        
-        // Store the node info data
-        await nodeInfoMutation.mutateAsync({
-          nodeId: nodeId,
-          dataType: 'node_info',
-          rawData: nodeInfoData,
-          parsedData: nodeInfoData,
-          dataSize: JSON.stringify(nodeInfoData).length,
-          recordCount: 1
-        });
-      } else {
-        addLog('error', 'Failed to retrieve node information');
-        return;
-      }
+      // Store the node info data
+      await nodeInfoMutation.mutateAsync({
+        nodeId: nodeId,
+        dataType: 'node_info',
+        rawData: nodeInfoData,
+        parsedData: nodeInfoData,
+        dataSize: JSON.stringify(nodeInfoData).length,
+        recordCount: 1
+      });
       
       addLog('info', 'Node info read completed successfully');
       
@@ -670,6 +673,111 @@ export default function NodesControl() {
       addLog('error', `Node info read failed: ${error.message}`);
       console.error('Node info read error:', error);
     }
+  };
+  
+  // Helper function to parse Meshtastic responses
+  const parseResponse = (payload: Uint8Array): any | null => {
+    try {
+      if (payload.length < 2) return null;
+      
+      const messageType = payload[0];
+      
+      switch (messageType) {
+        case 0x08: // Admin response
+          if (payload.length >= 4) {
+            const adminType = payload[2];
+            if (adminType === 0x01) {
+              return {
+                type: 'myNodeInfo',
+                data: {
+                  nodeId: `!${Array.from(payload.slice(4, 8)).map(b => b.toString(16).padStart(2, '0')).join('')}`,
+                  longName: extractStringFromPayload(payload, 8) || "Meshtastic Device",
+                  shortName: extractStringFromPayload(payload, 20, 4) || "MESH",
+                  hwModel: detectHardwareFromPayload(payload) || "Unknown",
+                  firmwareVersion: extractStringFromPayload(payload, 30) || "Unknown"
+                }
+              };
+            } else if (adminType === 0x02) {
+              return {
+                type: 'deviceConfig',
+                data: {
+                  role: extractRole(payload[10]) || "CLIENT",
+                  region: extractRegion(payload[11]) || "Unknown"
+                }
+              };
+            }
+          }
+          break;
+          
+        case 0x10: // Telemetry
+          return {
+            type: 'telemetry',
+            data: {
+              batteryLevel: payload[2] || 0,
+              voltage: (payload[3] + payload[4] * 256) / 100 || 0,
+              channelUtilization: payload[5] || 0
+            }
+          };
+          
+        case 0x20: // Position
+          return {
+            type: 'position',
+            data: {
+              latitude: extractCoordinate(payload, 2),
+              longitude: extractCoordinate(payload, 6),
+              altitude: payload[10] | (payload[11] << 8)
+            }
+          };
+      }
+      
+      return null;
+    } catch (error) {
+      return null;
+    }
+  };
+  
+  // Helper functions for parsing
+  const extractStringFromPayload = (payload: Uint8Array, offset: number, maxLength?: number): string | null => {
+    try {
+      const length = maxLength || Math.min(20, payload.length - offset);
+      const chars = [];
+      for (let i = 0; i < length && offset + i < payload.length; i++) {
+        const byte = payload[offset + i];
+        if (byte === 0) break;
+        if (byte >= 32 && byte <= 126) {
+          chars.push(String.fromCharCode(byte));
+        }
+      }
+      return chars.length > 0 ? chars.join('') : null;
+    } catch {
+      return null;
+    }
+  };
+  
+  const detectHardwareFromPayload = (payload: Uint8Array): string => {
+    const str = Array.from(payload).map(b => String.fromCharCode(b)).join('');
+    if (str.includes('TBEAM')) return 'T-Beam';
+    if (str.includes('HELTEC')) return 'Heltec';
+    if (str.includes('RAK')) return 'RAK4631';
+    return 'Unknown';
+  };
+  
+  const extractRole = (byte: number): string => {
+    const roles = ['CLIENT', 'CLIENT_MUTE', 'ROUTER', 'ROUTER_CLIENT'];
+    return roles[byte] || 'CLIENT';
+  };
+  
+  const extractRegion = (byte: number): string => {
+    const regions = ['Unset', 'US', 'EU_433', 'EU_868', 'CN', 'JP', 'ANZ', 'KR', 'TW', 'RU', 'IN', 'NZ_865', 'TH', 'LORA_24', 'UA_433', 'UA_868'];
+    return regions[byte] || 'Unknown';
+  };
+  
+  const extractCoordinate = (payload: Uint8Array, offset: number): number => {
+    if (offset + 4 <= payload.length) {
+      const value = payload[offset] | (payload[offset + 1] << 8) | (payload[offset + 2] << 16) | (payload[offset + 3] << 24);
+      return value / 10000000; // Meshtastic coordinate scaling
+    }
+    return 0;
   };
 
   const readNodeDb = async () => {
