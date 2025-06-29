@@ -290,11 +290,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async insertNodeDbRecord(recordData: InsertNodeDb): Promise<NodeDb> {
-    const [record] = await db
-      .insert(nodeDb)
-      .values(recordData)
-      .returning();
-    return record;
+    console.log('Attempting to insert NodeDB record:', recordData);
+    try {
+      const [record] = await db
+        .insert(nodeDb)
+        .values(recordData)
+        .returning();
+      console.log('NodeDB record inserted successfully:', record);
+      return record;
+    } catch (error) {
+      console.error('Database insertion error:', error);
+      throw error;
+    }
   }
 
   async getLatestNodeDbRecord(nodeId: string): Promise<NodeDb | undefined> {

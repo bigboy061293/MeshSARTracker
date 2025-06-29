@@ -465,12 +465,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/nodedb/read', isAuthenticated, async (req, res) => {
     try {
+      console.log('NodeDB read request received:', req.body);
       const { nodeId, dataType, rawData, parsedData, dataSize, recordCount } = req.body;
       
       if (!nodeId || !dataType || !rawData) {
+        console.log('Missing required fields:', { nodeId: !!nodeId, dataType: !!dataType, rawData: !!rawData });
         return res.status(400).json({ message: "Missing required fields: nodeId, dataType, rawData" });
       }
 
+      console.log('Attempting to insert NodeDB record for node:', nodeId);
       const record = await storage.insertNodeDbRecord({
         nodeId,
         dataType,
@@ -480,10 +483,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         recordCount
       });
 
+      console.log('NodeDB record inserted successfully:', record.id);
       res.json(record);
     } catch (error) {
       console.error("Error storing NodeDB record:", error);
       res.status(500).json({ message: "Failed to store NodeDB record" });
+    }
+  });
+
+  // Test endpoint without authentication for debugging
+  app.post('/api/test/nodedb', async (req, res) => {
+    try {
+      console.log('Test NodeDB endpoint called:', req.body);
+      const testData = {
+        nodeId: 'test_node_123',
+        dataType: 'complete_db',
+        rawData: { test: 'data', timestamp: new Date().toISOString() },
+        parsedData: { parsed: 'test', count: 1 },
+        dataSize: 50,
+        recordCount: 1
+      };
+      
+      const record = await storage.insertNodeDbRecord(testData);
+      console.log('Test NodeDB record created:', record.id);
+      res.json({ success: true, record });
+    } catch (error) {
+      console.error('Test NodeDB error:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 
