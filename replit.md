@@ -112,6 +112,7 @@ MeshTac is a full-stack web application designed for Search and Rescue (SAR) ope
 - June 27, 2025: Fixed fake drone data issue in UAS Control Mode - removed orphaned drone records from database, enhanced MAVLink service validation to only create drones for genuine hardware connections, improved connection status tracking to prevent fake online drones when no COM bridge is running
 - June 27, 2025: Completely removed all fake node data - deleted all simulated Meshtastic nodes from database, disabled all simulation code in Meshtastic service, system now only processes real telemetry data from bridge connections, fixed Settings page BridgeMonitor component to handle separate mavlink/meshtastic status structure
 - June 27, 2025: Enhanced Meshtastic bridge with comprehensive telemetry parsing - implemented advanced packet parsing based on official Meshtastic Web project structure, extracts real SNR/RSSI/node ID/voltage/position/hardware model data locally, sends structured telemetry over internet via enhanced bridge protocol, cloud app processes parsed data for accurate plotting and database updates with authentic node information
+- June 29, 2025: Fixed serial port connection persistence in Nodes Control Mode - resolved issue where navigating between pages would show "Disconnected" status despite active COM port connection, added automatic connection detection and restoration on page load, improved serial port cleanup and status tracking for seamless user experience
 
 ## User Preferences
 

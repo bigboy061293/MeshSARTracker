@@ -356,6 +356,38 @@ export default function NodesControl() {
     addLog('info', 'Logs exported to file');
   };
 
+  // Check for existing connections on page load
+  useEffect(() => {
+    const checkExistingConnections = async () => {
+      if (!isWebSerialSupported) return;
+      
+      try {
+        const availablePorts = await navigator.serial.getPorts();
+        
+        // Check if any ports are currently open
+        for (const existingPort of availablePorts) {
+          if (existingPort.readable || existingPort.writable) {
+            addLog('info', 'Detected active serial connection from previous session');
+            const portInfo = existingPort.getInfo();
+            addLog('info', `Reconnecting to: USB VID: ${portInfo.usbVendorId ? '0x' + portInfo.usbVendorId.toString(16) : 'Unknown'}, PID: ${portInfo.usbProductId ? '0x' + portInfo.usbProductId.toString(16) : 'Unknown'}`);
+            
+            // Restore the connection state
+            setPort(existingPort);
+            setIsConnected(true);
+            
+            // Resume reading from the port
+            startReading(existingPort);
+            break;
+          }
+        }
+      } catch (error: any) {
+        addLog('info', 'No existing connections detected');
+      }
+    };
+    
+    checkExistingConnections();
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
