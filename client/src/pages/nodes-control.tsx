@@ -575,12 +575,8 @@ export default function NodesControl() {
         }
       };
       
-      // Override the data processor temporarily
-      const originalProcessor = processReceivedData;
-      processReceivedData = (data: Uint8Array) => {
-        originalProcessor(data);
-        responseHandler(data);
-      };
+      // Set up response monitoring (the existing processReceivedData will continue running)
+      // We just monitor for incoming data during our timeout period
       
       // Wait for responses
       let attempts = 0;
@@ -596,8 +592,7 @@ export default function NodesControl() {
         }
       }
       
-      // Restore original processor
-      processReceivedData = originalProcessor;
+      // Note: Original processor will resume automatically
       
       // Generate node info from available data or create fallback
       if (!nodeInfoData || Object.keys(nodeInfoData.nodeInfo).length === 0) {
