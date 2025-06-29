@@ -5,7 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupWebSocket } from "./services/websocket";
 import { meshtasticService } from "./services/meshtastic";
 import { mavlinkService } from "./services/mavlink";
-import { insertMessageSchema, insertDroneSchema, insertMissionSchema, insertSharedMapSchema } from "@shared/schema";
+import { insertNodeSchema, insertMessageSchema, insertDroneSchema, insertMissionSchema, insertSharedMapSchema } from "@shared/schema";
 
 // Helper function for formatting bytes
 function formatBytes(bytes: number): string {
@@ -43,6 +43,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Node management routes
+  app.get('/api/nodes', isAuthenticated, async (req, res) => {
+    try {
+      const nodes = await storage.getAllNodes();
+      res.json(nodes);
+    } catch (error) {
+      console.error("Error fetching nodes:", error);
+      res.status(500).json({ message: "Failed to fetch nodes" });
+    }
+  });
+
+  app.post('/api/nodes', isAuthenticated, requireRole(['admin']), async (req, res) => {
+    try {
+      const nodeData = insertNodeSchema.parse(req.body);
+      const node = await storage.upsertNode(nodeData);
+      res.json(node);
+    } catch (error) {
+      console.error("Error creating node:", error);
+      res.status(500).json({ message: "Failed to create node" });
     }
   });
 
@@ -163,10 +185,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System status route
   app.get('/api/status', isAuthenticated, async (req, res) => {
     try {
+      const nodes = await storage.getAllNodes();
       const drones = await storage.getAllDrones();
+      const activeNodes = nodes.filter(n => n.isOnline).length;
       const connectedDrones = drones.filter(d => d.isConnected).length;
       
       res.json({
+        activeNodes,
+        totalNodes: nodes.length,
         connectedDrones,
         totalDrones: drones.length,
         meshtasticConnected: meshtasticService.isConnected(),
@@ -275,54 +301,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error saving settings:", error);
       res.status(500).json({ message: "Failed to save settings" });
-    }
-  });
-
-  // Web Serial Meshtastic endpoint
-  app.post("/api/meshtastic/process-serial", async (req, res) => {
-    try {
-      const { data, timestamp } = req.body;
-      
-      if (!data || !Array.isArray(data)) {
-        return res.status(400).json({ message: "Invalid data format" });
-      }
-
-      // Convert array back to buffer
-      const buffer = Buffer.from(data);
-      
-      // Process the raw Meshtastic data (similar to bridge processing)
-      console.log(`[Web Serial] Received ${buffer.length} bytes at ${new Date(timestamp).toISOString()}`);
-      
-      // Track Web Serial activity
-      if (!global.meshtasticWebSerialStats) {
-        global.meshtasticWebSerialStats = {
-          totalMessages: 0,
-          totalBytes: 0,
-          lastReceived: null,
-          isActive: false
-        };
-      }
-      
-      global.meshtasticWebSerialStats.totalMessages += 1;
-      global.meshtasticWebSerialStats.totalBytes += buffer.length;
-      global.meshtasticWebSerialStats.lastReceived = new Date().toISOString();
-      global.meshtasticWebSerialStats.isActive = true;
-
-      // Reset activity after 10 seconds of no data
-      setTimeout(() => {
-        if (global.meshtasticWebSerialStats && 
-            new Date().getTime() - new Date(global.meshtasticWebSerialStats.lastReceived!).getTime() > 9000) {
-          global.meshtasticWebSerialStats.isActive = false;
-        }
-      }, 10000);
-
-      // TODO: Parse the protobuf data to extract node information
-      // This would require implementing the Meshtastic protobuf parsing
-      
-      res.json({ success: true, processed: buffer.length });
-    } catch (error) {
-      console.error("Error processing Web Serial data:", error);
-      res.status(500).json({ message: "Failed to process data" });
     }
   });
 

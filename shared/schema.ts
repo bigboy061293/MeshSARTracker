@@ -40,7 +40,8 @@ export const users = pgTable("users", {
 
 // Meshtastic Nodes
 export const nodes = pgTable("nodes", {
-  nodeId: varchar("node_id").primaryKey(),
+  id: serial("id").primaryKey(),
+  nodeId: varchar("node_id").notNull().unique(),
   name: varchar("name").notNull(),
   shortName: varchar("short_name"),
   hwModel: varchar("hw_model"),
@@ -70,7 +71,7 @@ export const messages = pgTable("messages", {
 
 // Drones
 export const drones = pgTable("drones", {
-  id: integer("id").primaryKey(),
+  id: serial("id").primaryKey(),
   name: varchar("name").notNull(),
   serialNumber: varchar("serial_number").unique(),
   model: varchar("model"),
@@ -186,6 +187,7 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
 export const insertNodeSchema = createInsertSchema(nodes).omit({
+  id: true,
   createdAt: true,
   updatedAt: true,
 });

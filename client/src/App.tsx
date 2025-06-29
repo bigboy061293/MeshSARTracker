@@ -10,7 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import TacticalMap from "@/pages/map";
 import Communications from "@/pages/communications";
 import DroneControl from "@/pages/drone-control";
-
+import NodesControl from "@/pages/nodes-control";
 import MissionPlanning from "@/pages/mission-planning";
 import TeamManagement from "@/pages/team-management";
 import Settings from "@/pages/settings";
@@ -81,7 +81,7 @@ function AuthenticatedApp() {
             <Route path="/map" component={TacticalMap} />
             <Route path="/communications" component={Communications} />
             <Route path="/drone-control" component={DroneControl} />
-
+            <Route path="/nodes-control" component={NodesControl} />
             <Route path="/mission-planning" component={MissionPlanning} />
             <Route path="/team-management" component={TeamManagement} />
             <Route path="/settings" component={Settings} />
@@ -120,7 +120,7 @@ function Router() {
           <Route path="/map" component={AuthenticatedApp} />
           <Route path="/communications" component={AuthenticatedApp} />
           <Route path="/drone-control" component={AuthenticatedApp} />
-
+          <Route path="/nodes-control" component={AuthenticatedApp} />
           <Route path="/mission-planning" component={AuthenticatedApp} />
           <Route path="/team-management" component={AuthenticatedApp} />
           <Route path="/settings" component={AuthenticatedApp} />
