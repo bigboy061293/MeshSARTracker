@@ -57,7 +57,8 @@ import {
   Wifi,
   WifiOff,
   Terminal,
-  Download
+  Download,
+  Search
 } from "lucide-react";
 
 interface LogEntry {
@@ -102,6 +103,40 @@ export default function NodesControl() {
     }, 10);
   };
 
+  const checkPreviousPorts = async () => {
+    if (!isWebSerialSupported) {
+      addLog('error', 'Web Serial API not supported');
+      return;
+    }
+
+    try {
+      const availablePorts = await navigator.serial.getPorts();
+      
+      if (availablePorts.length === 0) {
+        addLog('info', 'No previously granted ports found. Use "Connect to Node" to select a device.');
+        return;
+      }
+
+      addLog('info', `Found ${availablePorts.length} previously granted port(s)`);
+      
+      // Check each port's status
+      for (let i = 0; i < availablePorts.length; i++) {
+        const port = availablePorts[i];
+        const portInfo = port.getInfo();
+        const isOpen = port.readable || port.writable;
+        
+        addLog('info', `Port ${i + 1}: USB VID: ${portInfo.usbVendorId ? '0x' + portInfo.usbVendorId.toString(16) : 'Unknown'}, PID: ${portInfo.usbProductId ? '0x' + portInfo.usbProductId.toString(16) : 'Unknown'} - ${isOpen ? 'OPEN' : 'CLOSED'}`);
+        
+        if (isOpen) {
+          addLog('info', 'Warning: Port is still open from previous session. Consider disconnecting and reconnecting.');
+        }
+      }
+      
+    } catch (error: any) {
+      addLog('error', `Error checking ports: ${error.message}`);
+    }
+  };
+
   const connectToDevice = async () => {
     if (!isWebSerialSupported) {
       toast({
@@ -115,6 +150,12 @@ export default function NodesControl() {
     setIsConnecting(true);
     
     try {
+      // Check if there are any previously granted ports
+      const availablePorts = await navigator.serial.getPorts();
+      if (availablePorts.length > 0) {
+        addLog('info', `Found ${availablePorts.length} previously granted port(s)`);
+      }
+      
       // Request a port - use broader filters or no filters to show all devices
       const selectedPort = await navigator.serial.requestPort({
         // No filters to allow selection of any COM port including COM6
@@ -257,19 +298,22 @@ export default function NodesControl() {
 
   const disconnectDevice = async () => {
     try {
-      // Stop reading
+      // Stop reading first
       if (readerRef.current) {
-        await readerRef.current.cancel();
+        try {
+          await readerRef.current.cancel();
+        } catch (cancelError) {
+          addLog('info', 'Reader already cancelled or closed');
+        }
         readerRef.current = null;
       }
 
-      // Close the port
-      if (port) {
+      // Close the port if it's still open
+      if (port && (port.readable || port.writable)) {
         await port.close();
-        setPort(null);
+        addLog('disconnect', 'Serial port closed');
       }
 
-      setIsConnected(false);
       addLog('disconnect', 'Disconnected from Meshtastic node');
       
       toast({
@@ -280,6 +324,10 @@ export default function NodesControl() {
     } catch (error: any) {
       addLog('error', `Disconnect error: ${error.message}`);
       console.error('Disconnect error:', error);
+    } finally {
+      // Always reset state regardless of errors
+      setPort(null);
+      setIsConnected(false);
     }
   };
 
@@ -311,11 +359,30 @@ export default function NodesControl() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (isConnected) {
-        disconnectDevice();
+      if (isConnected && port) {
+        // Force cleanup on page unmount
+        addLog('info', 'Page unmounted - cleaning up connection...');
+        
+        // Stop reading
+        if (readerRef.current) {
+          readerRef.current.cancel().catch(() => {
+            // Ignore cancellation errors during cleanup
+          });
+          readerRef.current = null;
+        }
+
+        // Close the port
+        if (port && port.readable) {
+          port.close().catch(() => {
+            // Ignore close errors during cleanup
+          });
+        }
+        
+        setPort(null);
+        setIsConnected(false);
       }
     };
-  }, []);
+  }, [isConnected, port]);
 
   if (isLoading) {
     return (
@@ -361,25 +428,38 @@ export default function NodesControl() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
-            {!isConnected ? (
-              <Button 
-                onClick={connectToDevice}
-                disabled={isConnecting || !isWebSerialSupported}
-                className="flex items-center gap-2"
-              >
-                <Play className="h-4 w-4" />
-                {isConnecting ? 'Connecting...' : 'Connect to Node'}
-              </Button>
-            ) : (
-              <Button 
-                onClick={disconnectDevice}
-                variant="destructive"
-                className="flex items-center gap-2"
-              >
-                <Square className="h-4 w-4" />
-                Disconnect
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {!isConnected ? (
+                <>
+                  <Button 
+                    onClick={connectToDevice}
+                    disabled={isConnecting || !isWebSerialSupported}
+                    className="flex items-center gap-2"
+                  >
+                    <Play className="h-4 w-4" />
+                    {isConnecting ? 'Connecting...' : 'Connect to Node'}
+                  </Button>
+                  <Button 
+                    onClick={checkPreviousPorts}
+                    disabled={isConnecting || !isWebSerialSupported}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Search className="h-4 w-4" />
+                    Check Ports
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  onClick={disconnectDevice}
+                  variant="destructive"
+                  className="flex items-center gap-2"
+                >
+                  <Square className="h-4 w-4" />
+                  Disconnect
+                </Button>
+              )}
+            </div>
             
             <div className="flex items-center gap-4 text-sm text-dark-secondary">
               <div>
