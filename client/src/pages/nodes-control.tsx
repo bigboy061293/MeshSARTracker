@@ -272,13 +272,20 @@ export default function NodesControl() {
 
   // Send configuration request to establish connection (like phone app does)
   const sendConfigurationRequest = async () => {
-    if (!port || !port.writable) {
-      addLog('error', 'Cannot send config request - port not writable');
+    if (!port) {
+      addLog('error', 'Cannot send config request - no port available');
+      return;
+    }
+
+    if (!port.writable) {
+      addLog('error', 'Cannot send config request - port not writable (may be in read-only mode)');
+      addLog('info', '💡 Port may need time to initialize or device may be in console mode');
       return;
     }
 
     if (!protocol || !protocolInitialized) {
       addLog('error', 'Cannot send config request - protocol not initialized');
+      addLog('info', '💡 Protocol initialization is still in progress');
       return;
     }
 
@@ -401,10 +408,22 @@ export default function NodesControl() {
       // Send initial configuration request to establish connection
       // This mimics what the phone app does: "Client wants config, nonce=8"
       setTimeout(async () => {
-        if (protocol && protocolInitialized) {
+        if (protocol && protocolInitialized && selectedPort.writable) {
+          addLog('info', '✅ Port is writable and protocol ready - sending config request');
           await sendConfigurationRequest();
+        } else {
+          addLog('info', `⏳ Waiting for initialization - Protocol: ${protocolInitialized ? 'Ready' : 'Not Ready'}, Port Writable: ${selectedPort.writable ? 'Yes' : 'No'}`);
+          // Try again after another second
+          setTimeout(async () => {
+            if (protocol && protocolInitialized && selectedPort.writable) {
+              addLog('info', '✅ Second attempt - sending config request');
+              await sendConfigurationRequest();
+            } else {
+              addLog('info', '💡 Config request skipped - will be sent manually if needed');
+            }
+          }, 2000);
         }
-      }, 1000); // Wait 1 second for connection to stabilize
+      }, 1500); // Wait 1.5 seconds for connection to stabilize
 
     } catch (error: any) {
       console.error('Serial connection error:', error);
@@ -1108,6 +1127,14 @@ export default function NodesControl() {
                   >
                     <Database className="h-4 w-4" />
                     {nodeDbMutation.isPending ? 'Reading...' : 'Read NodeDB'}
+                  </Button>
+                  <Button 
+                    onClick={sendConfigurationRequest}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Terminal className="h-4 w-4" />
+                    Send Config Request
                   </Button>
                   <Button 
                     onClick={switchToApiMode}
