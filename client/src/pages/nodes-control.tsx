@@ -187,6 +187,45 @@ export default function NodesControl() {
     }, 10);
   };
 
+  // Send configuration request to establish connection (like phone app does)
+  const sendConfigurationRequest = async () => {
+    if (!port || !port.writable) {
+      addLog('error', 'Cannot send config request - port not writable');
+      return;
+    }
+
+    if (!protocol || !protocolInitialized) {
+      addLog('error', 'Cannot send config request - protocol not initialized');
+      return;
+    }
+
+    try {
+      addLog('info', '🔧 Sending configuration request to establish connection...');
+      
+      const writer = port.writable.getWriter();
+      
+      try {
+        // Create wantConfig request (equivalent to "Client wants config, nonce=8")
+        const configRequest = protocol.createNodeDbRequest(); // This sends wantConfigId: true
+        const framedRequest = protocol.frameData(configRequest);
+        
+        addLog('info', `📤 Sending wantConfig request (${framedRequest.length} bytes)`);
+        addLog('data', `Config request HEX: ${Array.from(framedRequest.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+        
+        await writer.write(framedRequest);
+        
+        addLog('info', '✅ Configuration request sent - device should respond with node info');
+        
+      } finally {
+        writer.releaseLock();
+      }
+      
+    } catch (error: any) {
+      addLog('error', `❌ Failed to send config request: ${error.message}`);
+      console.error('Config request error:', error);
+    }
+  };
+
   const checkPreviousPorts = async () => {
     if (!isWebSerialSupported) {
       addLog('error', 'Web Serial API not supported');
@@ -275,6 +314,14 @@ export default function NodesControl() {
 
       // Start reading data
       startReading(selectedPort);
+      
+      // Send initial configuration request to establish connection
+      // This mimics what the phone app does: "Client wants config, nonce=8"
+      setTimeout(async () => {
+        if (protocol && protocolInitialized) {
+          await sendConfigurationRequest();
+        }
+      }, 1000); // Wait 1 second for connection to stabilize
 
     } catch (error: any) {
       console.error('Serial connection error:', error);
@@ -558,6 +605,8 @@ export default function NodesControl() {
     
     addLog('info', 'Logs exported to file');
   };
+
+
 
   const readNodeInfo = async () => {
     if (!isConnected || !port) {

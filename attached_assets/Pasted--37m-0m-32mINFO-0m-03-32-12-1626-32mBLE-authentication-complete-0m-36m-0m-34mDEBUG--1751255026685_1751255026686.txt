@@ -1,0 +1,88 @@
+[37m[0m[32mINFO  [0m| 03:32:12 1626 [32mBLE authentication complete[0m
+[36m[0m[34mDEBUG [0m| 03:32:12 1626 [34mBluetoothStatus CONNECTED[0m
+[36m[0m[34mDEBUG [0m| 03:32:14 1628 [34mTo Radio onwrite[0m
+[36m[0m[34mDEBUG [0m| 03:32:14 1628 [34mNew ToRadio packet[0m
+[37m[0m[32mINFO  [0m| 03:32:14 1628 [32mClient wants config, nonce=8[0m
+[36m[0m[34mDEBUG [0m| 03:32:14 1628 [34mGot 5 files in manifest[0m
+[37m[0m[32mINFO  [0m| 03:32:14 1628 [32mStart API client config[0m
+[36m[0m[34mDEBUG [0m| 03:32:15 1629 [34mFromRadio=STATE_SEND_MY_INFO[0m
+[37m[0m[32mINFO  [0m| 03:32:15 1629 [32mgetFromRadio=STATE_SEND_UIDATA[0m
+[36m[0m[34mDEBUG [0m| 03:32:15 1629 [34mSend My NodeInfo[0m
+[36m[0m[34mDEBUG [0m| 03:32:15 1629 [34mSend device metadata[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1630 [34mSend channels 8[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1630 [34mSend config: device[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1630 [34mSend config: position[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1630 [34mSend config: power[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1630 [34mSend config: network[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1630 [34mSend config: display[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1630 [34mSend config: lora[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1630 [34mSend config: bluetooth[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1631 [34mSend config: security[0m
+[36m[0m[34mDEBUG [0m| 03:32:16 1631 [34mSend config: sessionkey[0m
+[36m[0m[34mDEBUG [0m| 03:32:17 1631 [34mSend module config: mqtt[0m
+[36m[0m[34mDEBUG [0m| 03:32:17 1631 [34mSend module config: serial[0m
+[36m[0m[34mDEBUG [0m| 03:32:17 1631 [34mSend module config: ext notification[0m
+[36m[0m[34mDEBUG [0m| 03:32:17 1631 [34mSend module config: store forward[0m
+[36m[0m[34mDEBUG [0m| 03:32:17 1631 [34mSend module config: range test[0m
+[36m[0m[34mDEBUG [0m| 03:32:17 1631 [34mSend module config: telemetry[0m
+[36m[0m[34mDEBUG [0m| 03:32:17 1631 [34mSend module config: canned message[0m
+[36m[0m[34mDEBUG [0m| 03:32:17 1631 [34mSend module config: audio[0m
+[36m[0m[34mDEBUG [0m| 03:32:17 1632 [34mSend module config: remote hardware[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mSend module config: neighbor info[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mSend module config: ambient lighting[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mSend module config: detection sensor[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mSend module config: paxcounter[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mSend known nodes[0m
+[37m[0m[32mINFO  [0m| 03:32:18 1632 [32mnodeinfo: num=0xda73e25c, lastseen=1751223607, id=!da73e25c, name=Meshtastic e25c[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mSend known nodes[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mDone sending nodeinfo[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mFromRadio=STATE_SEND_FILEMANIFEST[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mFile: /prefs/channels.proto (57) bytes[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mFromRadio=STATE_SEND_FILEMANIFEST[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mFile: /prefs/config.proto (172) bytes[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mFromRadio=STATE_SEND_FILEMANIFEST[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mFile: /prefs/device.proto (131) bytes[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mFromRadio=STATE_SEND_FILEMANIFEST[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1632 [34mFile: /prefs/module.proto (92) bytes[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1633 [34mFromRadio=STATE_SEND_FILEMANIFEST[0m
+[36m[0m[34mDEBUG [0m| 03:32:18 1633 [34mFile: /prefs/nodes.proto (616) bytes[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mFromRadio=STATE_SEND_FILEMANIFEST[0m
+[37m[0m[32mINFO  [0m| 03:32:19 1633 [32mConfig Send Complete[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mFromRadio=STATE_SEND_PACKETS[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mphone downloaded packet (id=0xe82061a2 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0x0 Portnum=67 rxtime=1751254210 priority=10)[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mTo Radio onwrite[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mNew ToRadio packet[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mPACKET FROM PHONE (id=0xc3bc6ca6 fr=0x00000000 to=0xda75d1c4, WantAck=1, HopLim=3 Ch=0x0 Portnum=6 priority=70)[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mEnqueued local (id=0xc3bc6ca6 fr=0x00000000 to=0xda75d1c4, WantAck=1, HopLim=3 Ch=0x0 Portnum=6 rxtime=1751254339 priority=70)[0m
+[37m[0m[32mINFO  [0m| 03:32:19 1633 [32mTell client we have new packets 39[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mBLE notify fromNum[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mAdd packet record fr=0x0, id=0xc3bc6ca6[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mhandleReceived(REMOTE) (id=0xc3bc6ca6 fr=0x00000000 to=0xda75d1c4, WantAck=1, HopLim=3 Ch=0x0 Portnum=6 rxtime=1751254339 priority=70)[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mModule 'Admin' wantsPacket=1[0m
+[37m[0m[32mINFO  [0m| 03:32:19 1633 [Router] [32mReceived Admin from=0x0, id=0xc3bc6ca6, portnum=6, payloadlen=17[0m
+[37m[0m[32mINFO  [0m| 03:32:19 1633 [Router] [32mHandle admin payload 43[0m
+[37m[0m[32mINFO  [0m| 03:32:19 1633 [Router] [32mClient received set_time_only command[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mCurrent RTC quality: NTP. Ignore time of RTC quality of NTP[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mModule 'Admin' considered[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mModule 'routing' wantsPacket=1[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mFromRadio=STATE_SEND_PACKETS[0m
+[37m[0m[32mINFO  [0m| 03:32:19 1633 [Router] [32mReceived routing from=0x0, id=0xc3bc6ca6, portnum=6, payloadlen=17[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mRouting sniffing (id=0xc3bc6ca6 fr=0x00000000 to=0xda75d1c4, WantAck=1, HopLim=3 Ch=0x0 Portnum=6 rxtime=1751254339 priority=70)[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mPartially randomized packet id 53552547[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mEnqueued local (id=0x033125a3 fr=0xda75d1c4 to=0xda75d1c4, WantAck=0, HopLim=3 Ch=0x0 Portnum=5 requestId=c3bc6ca6 rxtime=1751254339 priority=120)[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mModule 'routing' considered[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mRx someone rebroadcasting for us (id=0x033125a3 fr=0xda75d1c4 to=0xda75d1c4, WantAck=0, HopLim=3 Ch=0x0 Portnum=5 requestId=c3bc6ca6 rxtime=1751254339 priorit[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mDidn't find pending packet[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mAdd packet record fr=0xda75d1c4, id=0x33125a3[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mhandleReceived(REMOTE) (id=0x033125a3 fr=0xda75d1c4 to=0xda75d1c4, WantAck=0, HopLim=3 Ch=0x0 Portnum=5 requestId=c3bc6ca6 rxtime=1751254339 priority=120)[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mModule 'routing' wantsPacket=1[0m
+[37m[0m[32mINFO  [0m| 03:32:19 1633 [Router] [32mReceived routing from=0xda75d1c4, id=0x33125a3, portnum=5, payloadlen=2[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mRouting sniffing (id=0x033125a3 fr=0xda75d1c4 to=0xda75d1c4, WantAck=0, HopLim=3 Ch=0x0 Portnum=5 requestId=c3bc6ca6 rxtime=1751254339 priority=120)[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mReceived a ACK for 0xc3bc6ca6, stopping retransmissions[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mDelivering rx packet (id=0x033125a3 fr=0xda75d1c4 to=0xda75d1c4, WantAck=0, HopLim=3 Ch=0x0 Portnum=5 requestId=c3bc6ca6 rxtime=1751254339 priority=120)[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mUpdate DB node 0xda75d1c4, rx_time=1751254339[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mForwarding to phone (id=0x033125a3 fr=0xda75d1c4 to=0xda75d1c4, WantAck=0, HopLim=3 Ch=0x0 Portnum=5 requestId=c3bc6ca6 rxtime=1751254339 priority=120)[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [Router] [34mModule 'routing' considered[0m
+[37m[0m[32mINFO  [0m| 03:32:19 1633 [32mTell client we have new packets 40[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mBLE notify fromNum[0m
+[36m[0m[34mDEBUG [0m| 03:32:19 1633 [34mFromRadio=STATE_SEND_PACKETS[0m
