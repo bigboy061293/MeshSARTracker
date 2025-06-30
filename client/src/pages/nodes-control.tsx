@@ -511,48 +511,42 @@ export default function NodesControl() {
     }
   };
 
-  // Buffer to accumulate fragmented serial data
+  // Frame-based data accumulation using separator characters
   let serialDataBuffer = new Uint8Array(0);
-  let bufferTimeout: NodeJS.Timeout | null = null;
 
   const accumulateSerialData = (newData: Uint8Array) => {
-    // Debug: Check if fragmentation happens at space characters (0x20)
-    const hexData = Array.from(newData).map(b => b.toString(16).padStart(2, '0')).join(' ');
-    const hasSpaces = newData.includes(0x20);
-    
-    if (newData.length === 1) {
-      addLog('debug', `Fragment: 1 byte [${hexData}] ${hasSpaces ? '(contains space 0x20)' : ''}`);
-    }
-
-    // Accumulate data into buffer
+    // Accumulate all incoming data
     const combinedBuffer = new Uint8Array(serialDataBuffer.length + newData.length);
     combinedBuffer.set(serialDataBuffer, 0);
     combinedBuffer.set(newData, serialDataBuffer.length);
     serialDataBuffer = combinedBuffer;
 
-    // Clear any existing timeout
-    if (bufferTimeout) {
-      clearTimeout(bufferTimeout);
+    // Process complete frames separated by \r\n
+    processCompleteFrames();
+  };
+
+  const processCompleteFrames = () => {
+    let startIndex = 0;
+    
+    // Look for complete frames ending with \r\n (0x0d 0x0a)
+    for (let i = 0; i < serialDataBuffer.length - 1; i++) {
+      if (serialDataBuffer[i] === 0x0d && serialDataBuffer[i + 1] === 0x0a) {
+        // Found complete frame from startIndex to i+1 (inclusive)
+        const frameLength = i - startIndex + 2; // Include \r\n
+        const frame = serialDataBuffer.slice(startIndex, startIndex + frameLength);
+        
+        // Process this complete frame
+        processReceivedData(frame);
+        
+        startIndex = i + 2; // Start next frame after \r\n
+      }
     }
-
-    // HYPOTHESIS TEST: Check if device is splitting at space characters
-    // Look for complete logical chunks ending with \r\n instead of arbitrary timeouts
-    const endsWithNewline = serialDataBuffer.length >= 2 && 
-                           serialDataBuffer[serialDataBuffer.length - 2] === 0x0d && 
-                           serialDataBuffer[serialDataBuffer.length - 1] === 0x0a;
-
-    if (endsWithNewline) {
-      // Process immediately when we have a complete line
-      processReceivedData(serialDataBuffer);
-      serialDataBuffer = new Uint8Array(0);
+    
+    // Keep remaining incomplete data in buffer
+    if (startIndex < serialDataBuffer.length) {
+      serialDataBuffer = serialDataBuffer.slice(startIndex);
     } else {
-      // Set shorter timeout for space-based fragmentation
-      bufferTimeout = setTimeout(() => {
-        if (serialDataBuffer.length > 0) {
-          processReceivedData(serialDataBuffer);
-          serialDataBuffer = new Uint8Array(0);
-        }
-      }, 20); // Much shorter timeout for space-based splits
+      serialDataBuffer = new Uint8Array(0);
     }
   };
 
