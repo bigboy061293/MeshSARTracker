@@ -1,0 +1,105 @@
+[11:51:53 AM]
+data:
+📥 Received 4 bytes
+[11:51:53 AM]
+data:
+HEX: 1b 5b 33 34
+[11:51:53 AM]
+data:
+TXT: ".[34"
+[11:51:53 AM]
+data:
+BIN: 00011011 01011011 00110011 00110100
+[11:51:53 AM]
+error:
+⚠️ Device is sending console/debug output, not protobuf data
+[11:51:53 AM]
+error:
+Console text: "[34"
+[11:51:53 AM]
+info:
+💡 Device may need to be switched to API mode or different baud rate
+[11:51:53 AM]
+data:
+📥 Received 8 bytes
+[11:51:53 AM]
+data:
+HEX: 6d 44 45 42 55 47 20 1b
+[11:51:53 AM]
+data:
+TXT: "mDEBUG ."
+[11:51:53 AM]
+data:
+BIN: 01101101 01000100 01000101 01000010 01010101 01000111 00100000 00011011
+[11:51:53 AM]
+error:
+⚠️ Device is sending console/debug output, not protobuf data
+[11:51:53 AM]
+error:
+Console text: "mDEBUG "
+[11:51:53 AM]
+info:
+💡 Device may need to be switched to API mode or different baud rate
+[11:51:53 AM]
+data:
+📥 Received 3 bytes
+[11:51:53 AM]
+data:
+HEX: 5b 30 6d
+[11:51:53 AM]
+data:
+TXT: "[0m"
+[11:51:53 AM]
+data:
+BIN: 01011011 00110000 01101101
+[11:51:53 AM]
+error:
+⚠️ Device is sending console/debug output, not protobuf data
+[11:51:53 AM]
+error:
+Console text: "[0m"
+[11:51:53 AM]
+info:
+💡 Device may need to be switched to API mode or different baud rate
+[11:51:53 AM]
+data:
+📥 Received 84 bytes
+[11:51:53 AM]
+data:
+HEX: 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 38 30 36 20 5b 50 6f 77 65 72 5d 20 1b 5b 33 34 6d 42 61 74 74...
+[11:51:53 AM]
+data:
+TXT: "| ??:??:?? 806 [Power] .[34mBatt"...
+[11:51:53 AM]
+data:
+BIN: 01111100 00100000 00111111 00111111 00111010 00111111 00111111 00111010...
+[11:51:53 AM]
+error:
+⚠️ Device is sending console/debug output, not protobuf data
+[11:51:53 AM]
+error:
+Console text: "| ??:??:?? 806 [Power] [34mBattery: usbPower=1, isCharging=1, batMv=6252, batPct=10"
+[11:51:53 AM]
+info:
+💡 Device may need to be switched to API mode or different baud rate
+[11:51:53 AM]
+data:
+📥 Received 7 bytes
+[11:51:53 AM]
+data:
+HEX: 30 0d 0a 1b 5b 30 6d
+[11:51:53 AM]
+data:
+TXT: "0...[0m"
+[11:51:53 AM]
+data:
+BIN: 00110000 00001101 00001010 00011011 01011011 00110000 01101101
+[11:51:53 AM]
+error:
+⚠️ Device is sending console/debug output, not protobuf data
+[11:51:53 AM]
+error:
+Console text: "0 [0m"
+[11:51:53 AM]
+info:
+💡 Device may need to be switched to API mode or different baud rate

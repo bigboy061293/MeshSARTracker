@@ -286,6 +286,73 @@ export default function NodesControl() {
     }
   };
 
+  // Try firmware-level commands to force API mode
+  const tryFirmwareLevelCommands = async (targetPort?: SerialPort) => {
+    const activePort = targetPort || port;
+    
+    if (!activePort || !activePort.writable) {
+      addLog('error', 'Cannot send firmware commands - port not available');
+      return;
+    }
+
+    try {
+      const writer = activePort.writable.getWriter();
+      
+      try {
+        addLog('info', '🛠️ Trying firmware-level commands to disable console...');
+        
+        // Firmware-level configuration commands to disable serial console
+        const firmwareCommands = [
+          // Complete system reset
+          'reboot\r\n',
+          '\r\n',
+        ];
+        
+        for (const command of firmwareCommands) {
+          const commandBytes = new TextEncoder().encode(command);
+          addLog('info', `📤 Firmware command: ${command.replace(/\r\n/g, '\\r\\n')}`);
+          await writer.write(commandBytes);
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // After reboot commands, wait and try meshtastic-specific config
+        setTimeout(async () => {
+          try {
+            const configCommands = [
+              // Meshtastic CLI-style commands to disable console
+              'meshtastic --set device.serial_enabled false\r\n',
+              'meshtastic --set device.debug_log_enabled false\r\n', 
+              'meshtastic --set device.serial_console false\r\n',
+              '\r\n',
+              
+              // Final API mode attempts
+              'api\r\n',
+              '\x00\x00\x00\x00', // Null bytes to trigger binary detection
+            ];
+            
+            for (const cmd of configCommands) {
+              const cmdBytes = new TextEncoder().encode(cmd);
+              await writer.write(cmdBytes);
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            addLog('info', '✅ Firmware configuration commands sent');
+            addLog('info', '🔄 Device may need 10-30 seconds to apply settings...');
+            
+          } catch (error: any) {
+            addLog('error', `Firmware config failed: ${error.message}`);
+          }
+        }, 2000);
+        
+      } finally {
+        writer.releaseLock();
+      }
+      
+    } catch (error: any) {
+      addLog('error', `Cannot access port for firmware commands: ${error.message}`);
+    }
+  };
+
   // Send configuration request to establish connection (like phone app does)
   const sendConfigurationRequest = async (targetPort?: SerialPort) => {
     const activePort = targetPort || port;
@@ -424,25 +491,43 @@ export default function NodesControl() {
       // Start reading data
       startReading(selectedPort);
       
-      // Send initial configuration request to establish connection
-      // This mimics what the phone app does: "Client wants config, nonce=8"
+      // IMMEDIATE API MODE FORCING
+      // Many Meshtastic devices get stuck in console mode and need immediate intervention
       setTimeout(async () => {
-        if (protocol && protocolInitialized && selectedPort.writable) {
-          addLog('info', '✅ Port is writable and protocol ready - sending config request');
-          await sendConfigurationRequest(selectedPort);
-        } else {
-          addLog('info', `⏳ Waiting for initialization - Protocol: ${protocolInitialized ? 'Ready' : 'Not Ready'}, Port Writable: ${selectedPort.writable ? 'Yes' : 'No'}`);
-          // Try again after another second
-          setTimeout(async () => {
-            if (protocol && protocolInitialized && selectedPort.writable) {
-              addLog('info', '✅ Second attempt - sending config request');
-              await sendConfigurationRequest(selectedPort);
-            } else {
-              addLog('info', '💡 Config request skipped - will be sent manually if needed');
-            }
-          }, 2000);
+        addLog('info', '🔧 Starting immediate API mode transition...');
+        
+        if (selectedPort.writable) {
+          const writer = selectedPort.writable.getWriter();
+          try {
+            // Send immediate binary mode trigger
+            addLog('info', '📤 Sending immediate binary mode trigger...');
+            await writer.write(new Uint8Array([0x94, 0xc3, 0x04, 0x00, 0x08, 0x64])); // Test frame
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Force API mode with aggressive sequence
+            await writer.write(new TextEncoder().encode('\x03\x03\x03')); // Triple Ctrl+C
+            await new Promise(resolve => setTimeout(resolve, 200));
+            await writer.write(new TextEncoder().encode('api\r\n'));
+            await new Promise(resolve => setTimeout(resolve, 200));
+            await writer.write(new Uint8Array([0x00, 0x00])); // Null bytes
+            
+            addLog('info', '✅ Binary mode triggers sent');
+          } finally {
+            writer.releaseLock();
+          }
         }
-      }, 1500); // Wait 1.5 seconds for connection to stabilize
+        
+        // Try config request after API mode switch
+        setTimeout(async () => {
+          if (protocol && protocolInitialized && selectedPort.writable) {
+            addLog('info', '✅ Attempting config request after API mode switch');
+            await sendConfigurationRequest(selectedPort);
+          } else {
+            addLog('info', '⚠️ Device may still be in console mode - use manual buttons if needed');
+          }
+        }, 2000);
+        
+      }, 500); // Start very quickly after connection
 
     } catch (error: any) {
       console.error('Serial connection error:', error);
