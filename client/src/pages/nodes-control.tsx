@@ -201,22 +201,44 @@ export default function NodesControl() {
       const writer = port.writable.getWriter();
       
       try {
-        // Send commands to exit console mode and enter API mode
-        // These are common Meshtastic console commands to switch modes
+        // More aggressive approach to exit console mode and enter API mode
         const commands = [
+          '\x03\x03\x03',   // Triple Ctrl+C to break any running command
           '\r\n',           // Send newline to clear any partial commands
           'exit\r\n',       // Try to exit current mode
-          'api\r\n',        // Switch to API mode
-          '\x03',           // Ctrl+C to interrupt
           '\x04',           // Ctrl+D to exit
+          '\r\n',           // Clear line again
+          'api\r\n',        // Switch to API mode
+          '++',             // Hayes command escape sequence (some devices use this)
+          '\r\n',           // Clear line
+          '\x1b',           // ESC key
+          '\r\n',           // Final clear
         ];
         
         for (const command of commands) {
           const commandBytes = new TextEncoder().encode(command);
-          addLog('info', `📤 Sending command: "${command.replace('\r\n', '\\r\\n').replace('\x03', 'Ctrl+C').replace('\x04', 'Ctrl+D')}"`);
+          const displayCmd = command === '\x03\x03\x03' ? 'Triple Ctrl+C' : 
+                           command === '\x03' ? 'Ctrl+C' : 
+                           command === '\x04' ? 'Ctrl+D' : 
+                           command === '\x1b' ? 'ESC' :
+                           command === '++' ? 'Hayes Escape' : 
+                           command.replace(/\r\n/g, '\\r\\n');
+          addLog('info', `📤 Sending command: ${displayCmd}`);
           await writer.write(commandBytes);
-          await new Promise(resolve => setTimeout(resolve, 500)); // Wait between commands
+          await new Promise(resolve => setTimeout(resolve, 300)); // Shorter delay for more commands
         }
+        
+        // Wait a bit then try to send a test protobuf frame
+        setTimeout(async () => {
+          try {
+            addLog('info', '🧪 Testing if API mode is active - sending test frame...');
+            const testFrame = new Uint8Array([0x94, 0xc3, 0x00, 0x01, 0x08, 0x01]); // Simple test frame
+            await writer.write(testFrame);
+            addLog('info', '📤 Test protobuf frame sent');
+          } catch (error: any) {
+            addLog('error', `⚠️ Could not send test frame: ${error.message}`);
+          }
+        }, 2000);
         
         addLog('info', '✅ API mode switch commands sent - waiting for device response...');
         

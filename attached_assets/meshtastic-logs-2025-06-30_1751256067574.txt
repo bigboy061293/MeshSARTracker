@@ -1,0 +1,588 @@
+[10:59:45 AM] INFO: Log console cleared
+[10:59:46 AM] INFO: Reading stream closed
+[10:59:46 AM] DISCONNECT: Serial port closed
+[10:59:46 AM] DISCONNECT: Disconnected from Meshtastic node
+[10:59:46 AM] INFO: Page unmounted - cleaning up connection...
+[11:00:07 AM] INFO: Found 1 previously granted port(s)
+[11:00:09 AM] CONNECT: Serial port selected: USB Vendor ID: 0x2886, Product ID: 0x59
+[11:00:09 AM] CONNECT: Attempting connection...
+[11:00:09 AM] CONNECT: Successfully connected to Meshtastic node via COM port
+[11:00:09 AM] INFO: 🔍 Waiting for device to provide real node ID...
+[11:00:09 AM] INFO: Baud rate: 115200, Data bits: 8, Stop bits: 1, Parity: none
+[11:00:09 AM] INFO: Started reading data from node...
+[11:00:10 AM] DATA: 📥 Received 1 bytes
+[11:00:10 AM] DATA: HEX: 1b
+[11:00:10 AM] DATA: TXT: "."
+[11:00:10 AM] DATA: BIN: 00011011
+[11:00:10 AM] DATA: 📥 Received 8 bytes
+[11:00:10 AM] DATA: HEX: 5b 33 34 6d 44 45 42 55
+[11:00:10 AM] DATA: TXT: "[34mDEBU"
+[11:00:10 AM] DATA: BIN: 01011011 00110011 00110100 01101101 01000100 01000101 01000010 01010101
+[11:00:10 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:10 AM] ERROR: Console text: "[34mDEBU"
+[11:00:10 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:10 AM] DATA: 📥 Received 35 bytes
+[11:00:10 AM] DATA: HEX: 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 31 39 20 5b 47 50 53 5d 20 1b 5b 33 34 6d 54...
+[11:00:10 AM] DATA: TXT: "G .[0m| ??:??:?? 19 [GPS] .[34mT"...
+[11:00:10 AM] DATA: BIN: 01000111 00100000 00011011 01011011 00110000 01101101 01111100 00100000...
+[11:00:10 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:10 AM] ERROR: Console text: "G [0m| ??:??:?? 19 [GPS] [34mTryi"
+[11:00:10 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:10 AM] DATA: 📥 Received 31 bytes
+[11:00:10 AM] DATA: HEX: 6e 67 20 24 50 43 41 53 30 36 2c 30 2a 31 42 20 28 4c 37 36 4b 29 2e 2e 2e 0d 0a 1b 5b 30 6d
+[11:00:10 AM] DATA: TXT: "ng $PCAS06,0*1B (L76K)......[0m"
+[11:00:10 AM] DATA: BIN: 01101110 01100111 00100000 00100100 01010000 01000011 01000001 01010011...
+[11:00:10 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:10 AM] ERROR: Console text: "ng $PCAS06,0*1B (L76K)...
+[0m"
+[11:00:10 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:10 AM] DATA: 📥 Received 1 bytes
+[11:00:10 AM] DATA: HEX: 1b
+[11:00:10 AM] DATA: TXT: "."
+[11:00:10 AM] DATA: BIN: 00011011
+[11:00:10 AM] DATA: 📥 Received 4 bytes
+[11:00:10 AM] DATA: HEX: 5b 33 34 6d
+[11:00:10 AM] DATA: TXT: "[34m"
+[11:00:10 AM] DATA: BIN: 01011011 00110011 00110100 01101101
+[11:00:10 AM] ERROR: ⚠️ No valid Meshtastic frame header detected
+[11:00:10 AM] DATA: 📥 Received 57 bytes
+[11:00:10 AM] DATA: HEX: 44 45 42 55 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 32 30 20 5b 47 50 53 5d 20 1b 5b...
+[11:00:10 AM] DATA: TXT: "DEBUG .[0m| ??:??:?? 20 [GPS] .["...
+[11:00:10 AM] DATA: BIN: 01000100 01000101 01000010 01010101 01000111 00100000 00011011 01011011...
+[11:00:10 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:10 AM] ERROR: Console text: "DEBUG [0m| ??:??:?? 20 [GPS] [34mTrying $PMTK605*31 (MT"
+[11:00:10 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:10 AM] DATA: 📥 Received 8 bytes
+[11:00:10 AM] DATA: HEX: 4b 20 46 61 6d 69 6c 79
+[11:00:10 AM] DATA: TXT: "K Family"
+[11:00:10 AM] DATA: BIN: 01001011 00100000 01000110 01100001 01101101 01101001 01101100 01111001
+[11:00:10 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:10 AM] ERROR: Console text: "K Family"
+[11:00:10 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:10 AM] DATA: 📥 Received 10 bytes
+[11:00:10 AM] DATA: HEX: 29 2e 2e 2e 0d 0a 1b 5b 30 6d
+[11:00:10 AM] DATA: TXT: ")......[0m"
+[11:00:10 AM] DATA: BIN: 00101001 00101110 00101110 00101110 00001101 00001010 00011011 01011011...
+[11:00:10 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:10 AM] ERROR: Console text: ")...
+[0m"
+[11:00:10 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:10 AM] ERROR: Cannot send config request - port not writable
+[11:00:11 AM] DATA: 📥 Received 1 bytes
+[11:00:11 AM] DATA: HEX: 1b
+[11:00:11 AM] DATA: TXT: "."
+[11:00:11 AM] DATA: BIN: 00011011
+[11:00:11 AM] DATA: 📥 Received 73 bytes
+[11:00:11 AM] DATA: HEX: 5b 33 33 6d 57 41 52 4e 20 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 32 31 20 5b 47 50 53...
+[11:00:11 AM] DATA: TXT: "[33mWARN  .[0m| ??:??:?? 21 [GPS"...
+[11:00:11 AM] DATA: BIN: 01011011 00110011 00110011 01101101 01010111 01000001 01010010 01001110...
+[11:00:11 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:11 AM] ERROR: Console text: "[33mWARN  [0m| ??:??:?? 21 [GPS] [33mNo GNSS Module (baudrate 9600)
+["
+[11:00:11 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:11 AM] DATA: 📥 Received 26 bytes
+[11:00:11 AM] DATA: HEX: 30 6d 1b 5b 33 33 6d 57 41 52 4e 20 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f
+[11:00:11 AM] DATA: TXT: "0m.[33mWARN  .[0m| ??:??:?"
+[11:00:11 AM] DATA: BIN: 00110000 01101101 00011011 01011011 00110011 00110011 01101101 01010111...
+[11:00:11 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:11 AM] ERROR: Console text: "0m[33mWARN  [0m| ??:??:?"
+[11:00:11 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:11 AM] DATA: 📥 Received 58 bytes
+[11:00:11 AM] DATA: HEX: 3f 20 32 31 20 5b 47 50 53 5d 20 1b 5b 33 33 6d 47 69 76 65 20 75 70 20 6f 6e 20 47 50 53 20 70...
+[11:00:11 AM] DATA: TXT: "? 21 [GPS] .[33mGive up on GPS p"...
+[11:00:11 AM] DATA: BIN: 00111111 00100000 00110010 00110001 00100000 01011011 01000111 01010000...
+[11:00:11 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:11 AM] ERROR: Console text: "? 21 [GPS] [33mGive up on GPS probe and set to 9600
+[0m"
+[11:00:11 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:16 AM] DATA: 📥 Received 1 bytes
+[11:00:16 AM] DATA: HEX: 1b
+[11:00:16 AM] DATA: TXT: "."
+[11:00:16 AM] DATA: BIN: 00011011
+[11:00:16 AM] DATA: 📥 Received 104 bytes
+[11:00:16 AM] DATA: HEX: 5b 33 34 6d 44 45 42 55 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 32 35 20 5b 50 6f 77...
+[11:00:16 AM] DATA: TXT: "[34mDEBUG .[0m| ??:??:?? 25 [Pow"...
+[11:00:16 AM] DATA: BIN: 01011011 00110011 00110100 01101101 01000100 01000101 01000010 01010101...
+[11:00:16 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:16 AM] ERROR: Console text: "[34mDEBUG [0m| ??:??:?? 25 [Power] [34mBattery: usbPower=1, isCharging=1, batMv=6252, batPct=100
+[0m"
+[11:00:16 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:20 AM] INFO: 🔄 Attempting to switch device from console to API mode...
+[11:00:20 AM] INFO: 📤 Sending command: "\r\n"
+[11:00:20 AM] INFO: 📤 Sending command: "exit\r\n"
+[11:00:21 AM] INFO: 📤 Sending command: "api\r\n"
+[11:00:21 AM] INFO: 📤 Sending command: "Ctrl+C"
+[11:00:22 AM] INFO: 📤 Sending command: "Ctrl+D"
+[11:00:22 AM] INFO: ✅ API mode switch commands sent - waiting for device response...
+[11:00:26 AM] DATA: 📥 Received 1 bytes
+[11:00:26 AM] DATA: HEX: 1b
+[11:00:26 AM] DATA: TXT: "."
+[11:00:26 AM] DATA: BIN: 00011011
+[11:00:26 AM] DATA: 📥 Received 11 bytes
+[11:00:26 AM] DATA: HEX: 5b 33 32 6d 49 4e 46 4f 20 20 1b
+[11:00:26 AM] DATA: TXT: "[32mINFO  ."
+[11:00:26 AM] DATA: BIN: 01011011 00110011 00110010 01101101 01001001 01001110 01000110 01001111...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[32mINFO  "
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 80 bytes
+[11:00:26 AM] DATA: HEX: 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 35 20 5b 4e 6f 64 65 49 6e 66 6f 5d 20 1b 5b 33 32...
+[11:00:26 AM] DATA: TXT: "[0m| ??:??:?? 35 [NodeInfo] .[32"...
+[11:00:26 AM] DATA: BIN: 01011011 00110000 01101101 01111100 00100000 00111111 00111111 00111010...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[0m| ??:??:?? 35 [NodeInfo] [32mSend our nodeinfo to mesh (wantReplies=0)
+[0m"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 11 bytes
+[11:00:26 AM] DATA: HEX: 1b 5b 33 32 6d 49 4e 46 4f 20 20
+[11:00:26 AM] DATA: TXT: ".[32mINFO  "
+[11:00:26 AM] DATA: BIN: 00011011 01011011 00110011 00110010 01101101 01001001 01001110 01000110...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[32mINFO  "
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 98 bytes
+[11:00:26 AM] DATA: HEX: 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 35 20 5b 4e 6f 64 65 49 6e 66 6f 5d 20 1b 5b 33...
+[11:00:26 AM] DATA: TXT: ".[0m| ??:??:?? 35 [NodeInfo] .[3"...
+[11:00:26 AM] DATA: BIN: 00011011 01011011 00110000 01101101 01111100 00100000 00111111 00111111...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[0m| ??:??:?? 35 [NodeInfo] [32mSend owner !da75d1c4/Meshtastic d1c4/d1c4
+[0m[34mDEBUG [0m| "
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 146 bytes
+[11:00:26 AM] DATA: HEX: 3f 3f 3a 3f 3f 3a 3f 3f 20 33 35 20 5b 4e 6f 64 65 49 6e 66 6f 5d 20 1b 5b 33 34 6d 49 6e 69 74...
+[11:00:26 AM] DATA: TXT: "??:??:?? 35 [NodeInfo] .[34mInit"...
+[11:00:26 AM] DATA: BIN: 00111111 00111111 00111010 00111111 00111111 00111010 00111111 00111111...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "??:??:?? 35 [NodeInfo] [34mInitial packet id 1002652239
+[0m[34mDEBUG [0m| ??:??:?? 35 [NodeInfo] [34mPartially randomized packet id 35607506"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 108 bytes
+[11:00:26 AM] DATA: HEX: 37 32 0d 0a 1b 5b 30 6d 1b 5b 33 34 6d 44 45 42 55 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f...
+[11:00:26 AM] DATA: TXT: "72...[0m.[34mDEBUG .[0m| ??:??:?"...
+[11:00:26 AM] DATA: BIN: 00110111 00110010 00001101 00001010 00011011 01011011 00110000 01101101...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "72
+[0m[34mDEBUG [0m| ??:??:?? 35 [NodeInfo] [34mUpdate DB node 0xda75d1c4, rx_time=0
+[0m[34mDEBUG ["
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 147 bytes
+[11:00:26 AM] DATA: HEX: 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 35 20 5b 4e 6f 64 65 49 6e 66 6f 5d 20 1b 5b 33 34 6d...
+[11:00:26 AM] DATA: TXT: "0m| ??:??:?? 35 [NodeInfo] .[34m"...
+[11:00:26 AM] DATA: BIN: 00110000 01101101 01111100 00100000 00111111 00111111 00111010 00111111...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "0m| ??:??:?? 35 [NodeInfo] [34mhandleReceived(LOCAL) (id=0xd43cbe50 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0x0 Portnum=4 priority=10)"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 38 bytes
+[11:00:26 AM] DATA: HEX: 0d 0a 1b 5b 30 6d 1b 5b 33 34 6d 44 45 42 55 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20...
+[11:00:26 AM] DATA: TXT: "...[0m.[34mDEBUG .[0m| ??:??:?? "...
+[11:00:26 AM] DATA: BIN: 00001101 00001010 00011011 01011011 00110000 01101101 00011011 01011011...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "
+[0m[34mDEBUG [0m| ??:??:?? 35 [No"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 1 bytes
+[11:00:26 AM] DATA: HEX: 64
+[11:00:26 AM] DATA: TXT: "d"
+[11:00:26 AM] DATA: BIN: 01100100
+[11:00:26 AM] DATA: 📥 Received 7 bytes
+[11:00:26 AM] DATA: HEX: 65 49 6e 66 6f 5d 20
+[11:00:26 AM] DATA: TXT: "eInfo] "
+[11:00:26 AM] DATA: BIN: 01100101 01001001 01101110 01100110 01101111 01011101 00100000
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "eInfo] "
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 209 bytes
+[11:00:26 AM] DATA: HEX: 1b 5b 33 34 6d 4e 6f 20 6d 6f 64 75 6c 65 73 20 69 6e 74 65 72 65 73 74 65 64 20 69 6e 20 70 6f...
+[11:00:26 AM] DATA: TXT: ".[34mNo modules interested in po"...
+[11:00:26 AM] DATA: BIN: 00011011 01011011 00110011 00110100 01101101 01001110 01101111 00100000...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[34mNo modules interested in portnum=4, src=LOCAL
+[0m[34mDEBUG [0m| ??:??:?? 35 [NodeInfo] [34mAdd packet record fr=0xda75d1c4, id=0xd43cbe50
+[0m[34mDEBUG [0m| ??:??:?? 35 [NodeInfo] [34mExpand shor"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 52 bytes
+[11:00:26 AM] DATA: HEX: 74 20 50 53 4b 20 23 31 0d 0a 1b 5b 30 6d 1b 5b 33 34 6d 44 45 42 55 47 20 1b 5b 30 6d 7c 20 3f...
+[11:00:26 AM] DATA: TXT: "t PSK #1...[0m.[34mDEBUG .[0m| ?"...
+[11:00:26 AM] DATA: BIN: 01110100 00100000 01010000 01010011 01001011 00100000 00100011 00110001...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "t PSK #1
+[0m[34mDEBUG [0m| ??:??:?? 35 [NodeInfo"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 203 bytes
+[11:00:26 AM] DATA: HEX: 5d 20 1b 5b 33 34 6d 55 73 65 20 41 45 53 31 32 38 20 6b 65 79 21 0d 0a 1b 5b 30 6d 1b 5b 33 34...
+[11:00:26 AM] DATA: TXT: "] .[34mUse AES128 key!...[0m.[34"...
+[11:00:26 AM] DATA: BIN: 01011101 00100000 00011011 01011011 00110011 00110100 01101101 01010101...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "] [34mUse AES128 key!
+[0m[34mDEBUG [0m| ??:??:?? 35 [NodeInfo] [34menqueue for send (id=0xd43cbe50 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0x8 encrypted len=102 hopStart=3 relay=0xc4 pr"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 42 bytes
+[11:00:26 AM] DATA: HEX: 69 6f 72 69 74 79 3d 31 30 29 0d 0a 1b 5b 30 6d 1b 5b 33 34 6d 44 45 42 55 47 20 1b 5b 30 6d 7c...
+[11:00:26 AM] DATA: TXT: "iority=10)...[0m.[34mDEBUG .[0m|"...
+[11:00:26 AM] DATA: BIN: 01101001 01101111 01110010 01101001 01110100 01111001 00111101 00110001...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "iority=10)
+[0m[34mDEBUG [0m| ??:??:?? "
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 60 bytes
+[11:00:26 AM] DATA: HEX: 33 35 20 5b 4e 6f 64 65 49 6e 66 6f 5d 20 1b 5b 33 34 6d 74 78 47 6f 6f 64 3d 30 2c 74 78 52 65...
+[11:00:26 AM] DATA: TXT: "35 [NodeInfo] .[34mtxGood=0,txRe"...
+[11:00:26 AM] DATA: BIN: 00110011 00110101 00100000 01011011 01001110 01101111 01100100 01100101...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "35 [NodeInfo] [34mtxGood=0,txRelay=0,rxGood=0,rxBad=0
+[0m"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 1 bytes
+[11:00:26 AM] DATA: HEX: 1b
+[11:00:26 AM] DATA: TXT: "."
+[11:00:26 AM] DATA: BIN: 00011011
+[11:00:26 AM] DATA: 📥 Received 73 bytes
+[11:00:26 AM] DATA: HEX: 5b 33 33 6d 57 41 52 4e 20 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 35 20 5b 52 61 64...
+[11:00:26 AM] DATA: TXT: "[33mWARN  .[0m| ??:??:?? 35 [Rad"...
+[11:00:26 AM] DATA: BIN: 01011011 00110011 00110011 01101101 01010111 01000001 01010010 01001110...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[33mWARN  [0m| ??:??:?? 35 [RadioIf] [33mCan not send yet, busyRx
+[0m"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 1 bytes
+[11:00:26 AM] DATA: HEX: 1b
+[11:00:26 AM] DATA: TXT: "."
+[11:00:26 AM] DATA: BIN: 00011011
+[11:00:26 AM] DATA: 📥 Received 6 bytes
+[11:00:26 AM] DATA: HEX: 5b 33 33 6d 57 41
+[11:00:26 AM] DATA: TXT: "[33mWA"
+[11:00:26 AM] DATA: BIN: 01011011 00110011 00110011 01101101 01010111 01000001
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[33mWA"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 1 bytes
+[11:00:26 AM] DATA: HEX: 52
+[11:00:26 AM] DATA: TXT: "R"
+[11:00:26 AM] DATA: BIN: 01010010
+[11:00:26 AM] DATA: 📥 Received 66 bytes
+[11:00:26 AM] DATA: HEX: 4e 20 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 36 20 5b 52 61 64 69 6f 49 66 5d 20 1b...
+[11:00:26 AM] DATA: TXT: "N  .[0m| ??:??:?? 36 [RadioIf] ."...
+[11:00:26 AM] DATA: BIN: 01001110 00100000 00100000 00011011 01011011 00110000 01101101 01111100...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "N  [0m| ??:??:?? 36 [RadioIf] [33mCan not send yet, busyRx
+[0m"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 1 bytes
+[11:00:26 AM] DATA: HEX: 1b
+[11:00:26 AM] DATA: TXT: "."
+[11:00:26 AM] DATA: BIN: 00011011
+[11:00:26 AM] DATA: 📥 Received 4 bytes
+[11:00:26 AM] DATA: HEX: 5b 33 33 6d
+[11:00:26 AM] DATA: TXT: "[33m"
+[11:00:26 AM] DATA: BIN: 01011011 00110011 00110011 01101101
+[11:00:26 AM] ERROR: ⚠️ No valid Meshtastic frame header detected
+[11:00:26 AM] DATA: 📥 Received 2 bytes
+[11:00:26 AM] DATA: HEX: 57 41
+[11:00:26 AM] DATA: TXT: "WA"
+[11:00:26 AM] DATA: BIN: 01010111 01000001
+[11:00:26 AM] DATA: 📥 Received 1 bytes
+[11:00:26 AM] DATA: HEX: 52
+[11:00:26 AM] DATA: TXT: "R"
+[11:00:26 AM] DATA: BIN: 01010010
+[11:00:26 AM] DATA: 📥 Received 66 bytes
+[11:00:26 AM] DATA: HEX: 4e 20 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 36 20 5b 52 61 64 69 6f 49 66 5d 20 1b...
+[11:00:26 AM] DATA: TXT: "N  .[0m| ??:??:?? 36 [RadioIf] ."...
+[11:00:26 AM] DATA: BIN: 01001110 00100000 00100000 00011011 01011011 00110000 01101101 01111100...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "N  [0m| ??:??:?? 36 [RadioIf] [33mCan not send yet, busyRx
+[0m"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 8 bytes
+[11:00:26 AM] DATA: HEX: 1b 5b 33 33 6d 57 41 52
+[11:00:26 AM] DATA: TXT: ".[33mWAR"
+[11:00:26 AM] DATA: BIN: 00011011 01011011 00110011 00110011 01101101 01010111 01000001 01010010
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[33mWAR"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 66 bytes
+[11:00:26 AM] DATA: HEX: 4e 20 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 36 20 5b 52 61 64 69 6f 49 66 5d 20 1b...
+[11:00:26 AM] DATA: TXT: "N  .[0m| ??:??:?? 36 [RadioIf] ."...
+[11:00:26 AM] DATA: BIN: 01001110 00100000 00100000 00011011 01011011 00110000 01101101 01111100...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "N  [0m| ??:??:?? 36 [RadioIf] [33mCan not send yet, busyRx
+[0m"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 1 bytes
+[11:00:26 AM] DATA: HEX: 1b
+[11:00:26 AM] DATA: TXT: "."
+[11:00:26 AM] DATA: BIN: 00011011
+[11:00:26 AM] DATA: 📥 Received 10 bytes
+[11:00:26 AM] DATA: HEX: 5b 33 34 6d 44 45 42 55 47 20
+[11:00:26 AM] DATA: TXT: "[34mDEBUG "
+[11:00:26 AM] DATA: BIN: 01011011 00110011 00110100 01101101 01000100 01000101 01000010 01010101...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[34mDEBUG "
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 70 bytes
+[11:00:26 AM] DATA: HEX: 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 36 20 5b 52 61 64 69 6f 49 66 5d 20 1b 5b 33 34...
+[11:00:26 AM] DATA: TXT: ".[0m| ??:??:?? 36 [RadioIf] .[34"...
+[11:00:26 AM] DATA: BIN: 00011011 01011011 00110000 01101101 01111100 00100000 00111111 00111111...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[0m| ??:??:?? 36 [RadioIf] [34mIgnore false preamble detection
+[0m"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 1 bytes
+[11:00:26 AM] DATA: HEX: 1b
+[11:00:26 AM] DATA: TXT: "."
+[11:00:26 AM] DATA: BIN: 00011011
+[11:00:26 AM] DATA: 📥 Received 30 bytes
+[11:00:26 AM] DATA: HEX: 5b 33 34 6d 44 45 42 55 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 36 20 5b 52
+[11:00:26 AM] DATA: TXT: "[34mDEBUG .[0m| ??:??:?? 36 [R"
+[11:00:26 AM] DATA: BIN: 01011011 00110011 00110100 01101101 01000100 01000101 01000010 01010101...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "[34mDEBUG [0m| ??:??:?? 36 [R"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 199 bytes
+[11:00:26 AM] DATA: HEX: 61 64 69 6f 49 66 5d 20 1b 5b 33 34 6d 53 74 61 72 74 65 64 20 54 78 20 28 69 64 3d 30 78 64 34...
+[11:00:26 AM] DATA: TXT: "adioIf] .[34mStarted Tx (id=0xd4"...
+[11:00:26 AM] DATA: BIN: 01100001 01100100 01101001 01101111 01001001 01100110 01011101 00100000...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "adioIf] [34mStarted Tx (id=0xd43cbe50 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0x8 encrypted len=102 hopStart=3 relay=0xc4 priority=10)
+[0m[34mDEBUG [0m| ??:??:?? 36 [RadioIf] [34mPa"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 56 bytes
+[11:00:26 AM] DATA: HEX: 63 6b 65 74 20 54 58 3a 20 39 39 33 6d 73 0d 0a 1b 5b 30 6d 1b 5b 33 34 6d 44 45 42 55 47 20 1b...
+[11:00:26 AM] DATA: TXT: "cket TX: 993ms...[0m.[34mDEBUG ."...
+[11:00:26 AM] DATA: BIN: 01100011 01101011 01100101 01110100 00100000 01010100 01011000 00111010...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "cket TX: 993ms
+[0m[34mDEBUG [0m| ??:??:?? 36 [RadioI"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:26 AM] DATA: 📥 Received 46 bytes
+[11:00:26 AM] DATA: HEX: 66 5d 20 1b 5b 33 34 6d 30 20 70 61 63 6b 65 74 73 20 72 65 6d 61 69 6e 20 69 6e 20 74 68 65 20...
+[11:00:26 AM] DATA: TXT: "f] .[34m0 packets remain in the "...
+[11:00:26 AM] DATA: BIN: 01100110 01011101 00100000 00011011 01011011 00110011 00110100 01101101...
+[11:00:26 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:26 AM] ERROR: Console text: "f] [34m0 packets remain in the TX queue
+[0m"
+[11:00:26 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:27 AM] DATA: 📥 Received 1 bytes
+[11:00:27 AM] DATA: HEX: 1b
+[11:00:27 AM] DATA: TXT: "."
+[11:00:27 AM] DATA: BIN: 00011011
+[11:00:27 AM] DATA: 📥 Received 5 bytes
+[11:00:27 AM] DATA: HEX: 5b 33 34 6d 44
+[11:00:27 AM] DATA: TXT: "[34mD"
+[11:00:27 AM] DATA: BIN: 01011011 00110011 00110100 01101101 01000100
+[11:00:27 AM] ERROR: ⚠️ No valid Meshtastic frame header detected
+[11:00:27 AM] DATA: 📥 Received 185 bytes
+[11:00:27 AM] DATA: HEX: 45 42 55 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 33 37 20 5b 52 61 64 69 6f 49 66 5d...
+[11:00:27 AM] DATA: TXT: "EBUG .[0m| ??:??:?? 37 [RadioIf]"...
+[11:00:27 AM] DATA: BIN: 01000101 01000010 01010101 01000111 00100000 00011011 01011011 00110000...
+[11:00:27 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:27 AM] ERROR: Console text: "EBUG [0m| ??:??:?? 37 [RadioIf] [34mCompleted sending (id=0xd43cbe50 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0x8 encrypted len=102 hopStart=3 relay=0xc4 priority=10)
+[0m"
+[11:00:27 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:36 AM] DATA: 📥 Received 1 bytes
+[11:00:36 AM] DATA: HEX: 1b
+[11:00:36 AM] DATA: TXT: "."
+[11:00:36 AM] DATA: BIN: 00011011
+[11:00:36 AM] DATA: 📥 Received 5 bytes
+[11:00:36 AM] DATA: HEX: 5b 33 34 6d 44
+[11:00:36 AM] DATA: TXT: "[34mD"
+[11:00:36 AM] DATA: BIN: 01011011 00110011 00110100 01101101 01000100
+[11:00:36 AM] ERROR: ⚠️ No valid Meshtastic frame header detected
+[11:00:36 AM] DATA: 📥 Received 12 bytes
+[11:00:36 AM] DATA: HEX: 45 42 55 47 20 1b 5b 30 6d 7c 20 3f
+[11:00:36 AM] DATA: TXT: "EBUG .[0m| ?"
+[11:00:36 AM] DATA: BIN: 01000101 01000010 01010101 01000111 00100000 00011011 01011011 00110000...
+[11:00:36 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:36 AM] ERROR: Console text: "EBUG [0m| ?"
+[11:00:36 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:36 AM] DATA: 📥 Received 87 bytes
+[11:00:36 AM] DATA: HEX: 3f 3a 3f 3f 3a 3f 3f 20 34 35 20 5b 50 6f 77 65 72 5d 20 1b 5b 33 34 6d 42 61 74 74 65 72 79 3a...
+[11:00:36 AM] DATA: TXT: "?:??:?? 45 [Power] .[34mBattery:"...
+[11:00:36 AM] DATA: BIN: 00111111 00111010 00111111 00111111 00111010 00111111 00111111 00100000...
+[11:00:36 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:36 AM] ERROR: Console text: "?:??:?? 45 [Power] [34mBattery: usbPower=1, isCharging=1, batMv=6252, batPct=100
+[0m"
+[11:00:36 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 1 bytes
+[11:00:41 AM] DATA: HEX: 1b
+[11:00:41 AM] DATA: TXT: "."
+[11:00:41 AM] DATA: BIN: 00011011
+[11:00:41 AM] DATA: 📥 Received 5 bytes
+[11:00:41 AM] DATA: HEX: 5b 33 32 6d 49
+[11:00:41 AM] DATA: TXT: "[32mI"
+[11:00:41 AM] DATA: BIN: 01011011 00110011 00110010 01101101 01001001
+[11:00:41 AM] ERROR: ⚠️ No valid Meshtastic frame header detected
+[11:00:41 AM] DATA: 📥 Received 162 bytes
+[11:00:41 AM] DATA: HEX: 4e 46 4f 20 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 35 30 20 5b 50 6f 73 69 74 69 6f 6e...
+[11:00:41 AM] DATA: TXT: "NFO  .[0m| ??:??:?? 50 [Position"...
+[11:00:41 AM] DATA: BIN: 01001110 01000110 01001111 00100000 00100000 00011011 01011011 00110000...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "NFO  [0m| ??:??:?? 50 [Position] [32mSend pos@0:6 to mesh (wantReplies=0)
+[0m[34mDEBUG [0m| ??:??:?? 50 [Position] [34mSet local position: lat=108759545 lo"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 84 bytes
+[11:00:41 AM] DATA: HEX: 6e 3d 31 30 36 38 30 39 34 34 38 33 20 74 69 6d 65 3d 30 20 74 69 6d 65 73 74 61 6d 70 3d 30 0d...
+[11:00:41 AM] DATA: TXT: "n=1068094483 time=0 timestamp=0."...
+[11:00:41 AM] DATA: BIN: 01101110 00111101 00110001 00110000 00110110 00111000 00110000 00111001...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "n=1068094483 time=0 timestamp=0
+[0m[34mDEBUG [0m| ??:??:?? 50 [Position] [34mSe"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 171 bytes
+[11:00:41 AM] DATA: HEX: 6e 64 20 6c 6f 63 61 74 69 6f 6e 20 77 69 74 68 20 70 72 65 63 69 73 69 6f 6e 20 31 33 0d 0a 1b...
+[11:00:41 AM] DATA: TXT: "nd location with precision 13..."...
+[11:00:41 AM] DATA: BIN: 01101110 01100100 00100000 01101100 01101111 01100011 01100001 01110100...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "nd location with precision 13
+[0m[32mINFO  [0m| ??:??:?? 50 [Position] [32mStrip low RTCQuality (0) time from position
+[0m[32mINFO  [0m| ??:??:?? 50 [Position] ["
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 178 bytes
+[11:00:41 AM] DATA: HEX: 33 32 6d 50 6f 73 69 74 69 6f 6e 20 70 61 63 6b 65 74 3a 20 74 69 6d 65 3d 30 20 6c 61 74 3d 31...
+[11:00:41 AM] DATA: TXT: "32mPosition packet: time=0 lat=1"...
+[11:00:41 AM] DATA: BIN: 00110011 00110010 01101101 01010000 01101111 01110011 01101001 01110100...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "32mPosition packet: time=0 lat=108789760 lon=1068236800
+[0m[34mDEBUG [0m| ??:??:?? 50 [Position] [34mPartially randomized packet id 2761316945
+[0m[34mDEBUG [0m| ??:??:??"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 77 bytes
+[11:00:41 AM] DATA: HEX: 20 35 30 20 5b 50 6f 73 69 74 69 6f 6e 5d 20 1b 5b 33 34 6d 55 70 64 61 74 65 20 44 42 20 6e 6f...
+[11:00:41 AM] DATA: TXT: " 50 [Position] .[34mUpdate DB no"...
+[11:00:41 AM] DATA: BIN: 00100000 00110101 00110000 00100000 01011011 01010000 01101111 01110011...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: " 50 [Position] [34mUpdate DB node 0xda75d1c4, rx_time=0
+[0m[34mDEBUG [0m"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 255 bytes
+[11:00:41 AM] DATA: HEX: 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 35 30 20 5b 50 6f 73 69 74 69 6f 6e 5d 20 1b 5b 33 34 6d 68 61...
+[11:00:41 AM] DATA: TXT: "| ??:??:?? 50 [Position] .[34mha"...
+[11:00:41 AM] DATA: BIN: 01111100 00100000 00111111 00111111 00111010 00111111 00111111 00111010...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "| ??:??:?? 50 [Position] [34mhandleReceived(LOCAL) (id=0xa4965a51 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0x0 Portnum=3 priority=10)
+[0m[34mDEBUG [0m| ??:??:?? 50 [Position] [34mNo modules interested in portnum=3, src=LOCAL
+[0m[34mDEB"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 30 bytes
+[11:00:41 AM] DATA: HEX: 55 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 35 30 20 5b 50 6f 73 69 74 69 6f 6e
+[11:00:41 AM] DATA: TXT: "UG .[0m| ??:??:?? 50 [Position"
+[11:00:41 AM] DATA: BIN: 01010101 01000111 00100000 00011011 01011011 00110000 01101101 01111100...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "UG [0m| ??:??:?? 50 [Position"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 225 bytes
+[11:00:41 AM] DATA: HEX: 5d 20 1b 5b 33 34 6d 41 64 64 20 70 61 63 6b 65 74 20 72 65 63 6f 72 64 20 66 72 3d 30 78 64 61...
+[11:00:41 AM] DATA: TXT: "] .[34mAdd packet record fr=0xda"...
+[11:00:41 AM] DATA: BIN: 01011101 00100000 00011011 01011011 00110011 00110100 01101101 01000001...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "] [34mAdd packet record fr=0xda75d1c4, id=0xa4965a51
+[0m[34mDEBUG [0m| ??:??:?? 50 [Position] [34mExpand short PSK #1
+[0m[34mDEBUG [0m| ??:??:?? 50 [Position] [34mUse AES128 key!
+[0m[34mDEBUG [0m| ??:??:?? 50 ["
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 161 bytes
+[11:00:41 AM] DATA: HEX: 50 6f 73 69 74 69 6f 6e 5d 20 1b 5b 33 34 6d 65 6e 71 75 65 75 65 20 66 6f 72 20 73 65 6e 64 20...
+[11:00:41 AM] DATA: TXT: "Position] .[34menqueue for send "...
+[11:00:41 AM] DATA: BIN: 01010000 01101111 01110011 01101001 01110100 01101001 01101111 01101110...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "Position] [34menqueue for send (id=0xa4965a51 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0x8 encrypted len=44 hopStart=3 relay=0xc4 priority=10)
+[0m"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 94 bytes
+[11:00:41 AM] DATA: HEX: 5b 33 34 6d 44 45 42 55 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 35 30 20 5b 50 6f 73...
+[11:00:41 AM] DATA: TXT: "[34mDEBUG .[0m| ??:??:?? 50 [Pos"...
+[11:00:41 AM] DATA: BIN: 01011011 00110011 00110100 01101101 01000100 01000101 01000010 01010101...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "[34mDEBUG [0m| ??:??:?? 50 [Position] [34mtxGood=1,txRelay=0,rxGood=0,rxBad=0
+[0m[34mDEBU"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 255 bytes
+[11:00:41 AM] DATA: HEX: 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 35 30 20 5b 50 6f 73 69 74 69 6f 6e 5d 20 1b...
+[11:00:41 AM] DATA: TXT: "G .[0m| ??:??:?? 50 [Position] ."...
+[11:00:41 AM] DATA: BIN: 01000111 00100000 00011011 01011011 00110000 01101101 01111100 00100000...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "G [0m| ??:??:?? 50 [Position] [34mUse channel 0 (hash 0x8)
+[0m[34mDEBUG [0m| ??:??:?? 50 [Position] [34mExpand short PSK #1
+[0m[34mDEBUG [0m| ??:??:?? 50 [Position] [34mUse AES128 key!
+[0m[34mDEBUG [0m| ??:??:?? 50 [Position] [34mdecoded "
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 76 bytes
+[11:00:41 AM] DATA: HEX: 6d 65 73 73 61 67 65 20 28 69 64 3d 30 78 61 34 39 36 35 61 35 31 20 66 72 3d 30 78 64 61 37 35...
+[11:00:41 AM] DATA: TXT: "message (id=0xa4965a51 fr=0xda75"...
+[11:00:41 AM] DATA: BIN: 01101101 01100101 01110011 01110011 01100001 01100111 01100101 00100000...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "message (id=0xa4965a51 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 53 bytes
+[11:00:41 AM] DATA: HEX: 78 30 20 50 6f 72 74 6e 75 6d 3d 33 20 68 6f 70 53 74 61 72 74 3d 33 20 72 65 6c 61 79 3d 30 78...
+[11:00:41 AM] DATA: TXT: "x0 Portnum=3 hopStart=3 relay=0x"...
+[11:00:41 AM] DATA: BIN: 01111000 00110000 00100000 01010000 01101111 01110010 01110100 01101110...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "x0 Portnum=3 hopStart=3 relay=0xc4 priority=10)
+[0m"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 1 bytes
+[11:00:41 AM] DATA: HEX: 1b
+[11:00:41 AM] DATA: TXT: "."
+[11:00:41 AM] DATA: BIN: 00011011
+[11:00:41 AM] DATA: 📥 Received 8 bytes
+[11:00:41 AM] DATA: HEX: 5b 33 34 6d 44 45 42 55
+[11:00:41 AM] DATA: TXT: "[34mDEBU"
+[11:00:41 AM] DATA: BIN: 01011011 00110011 00110100 01101101 01000100 01000101 01000010 01010101
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "[34mDEBU"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 117 bytes
+[11:00:41 AM] DATA: HEX: 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 35 30 20 5b 52 61 64 69 6f 49 66 5d 20 1b 5b...
+[11:00:41 AM] DATA: TXT: "G .[0m| ??:??:?? 50 [RadioIf] .["...
+[11:00:41 AM] DATA: BIN: 01000111 00100000 00011011 01011011 00110000 01101101 01111100 00100000...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "G [0m| ??:??:?? 50 [RadioIf] [34mStarted Tx (id=0xa4965a51 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0x8 "
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 138 bytes
+[11:00:41 AM] DATA: HEX: 65 6e 63 72 79 70 74 65 64 20 6c 65 6e 3d 34 34 20 68 6f 70 53 74 61 72 74 3d 33 20 72 65 6c 61...
+[11:00:41 AM] DATA: TXT: "encrypted len=44 hopStart=3 rela"...
+[11:00:41 AM] DATA: BIN: 01100101 01101110 01100011 01110010 01111001 01110000 01110100 01100101...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "encrypted len=44 hopStart=3 relay=0xc4 priority=10)
+[0m[34mDEBUG [0m| ??:??:?? 50 [RadioIf] [34mPacket TX: 559ms
+[0m[34mDEBUG [0m"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 46 bytes
+[11:00:41 AM] DATA: HEX: 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 35 30 20 5b 52 61 64 69 6f 49 66 5d 20 1b 5b 33 34 6d 30 20 70...
+[11:00:41 AM] DATA: TXT: "| ??:??:?? 50 [RadioIf] .[34m0 p"...
+[11:00:41 AM] DATA: BIN: 01111100 00100000 00111111 00111111 00111010 00111111 00111111 00111010...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "| ??:??:?? 50 [RadioIf] [34m0 packets remain "
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 21 bytes
+[11:00:41 AM] DATA: HEX: 69 6e 20 74 68 65 20 54 58 20 71 75 65 75 65 0d 0a 1b 5b 30 6d
+[11:00:41 AM] DATA: TXT: "in the TX queue...[0m"
+[11:00:41 AM] DATA: BIN: 01101001 01101110 00100000 01110100 01101000 01100101 00100000 01010100...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "in the TX queue
+[0m"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 1 bytes
+[11:00:41 AM] DATA: HEX: 1b
+[11:00:41 AM] DATA: TXT: "."
+[11:00:41 AM] DATA: BIN: 00011011
+[11:00:41 AM] DATA: 📥 Received 5 bytes
+[11:00:41 AM] DATA: HEX: 5b 33 34 6d 44
+[11:00:41 AM] DATA: TXT: "[34mD"
+[11:00:41 AM] DATA: BIN: 01011011 00110011 00110100 01101101 01000100
+[11:00:41 AM] ERROR: ⚠️ No valid Meshtastic frame header detected
+[11:00:41 AM] DATA: 📥 Received 44 bytes
+[11:00:41 AM] DATA: HEX: 45 42 55 47 20 1b 5b 30 6d 7c 20 3f 3f 3a 3f 3f 3a 3f 3f 20 35 31 20 5b 52 61 64 69 6f 49 66 5d...
+[11:00:41 AM] DATA: TXT: "EBUG .[0m| ??:??:?? 51 [RadioIf]"...
+[11:00:41 AM] DATA: BIN: 01000101 01000010 01010101 01000111 00100000 00011011 01011011 00110000...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "EBUG [0m| ??:??:?? 51 [RadioIf] [34mComple"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
+[11:00:41 AM] DATA: 📥 Received 140 bytes
+[11:00:41 AM] DATA: HEX: 74 65 64 20 73 65 6e 64 69 6e 67 20 28 69 64 3d 30 78 61 34 39 36 35 61 35 31 20 66 72 3d 30 78...
+[11:00:41 AM] DATA: TXT: "ted sending (id=0xa4965a51 fr=0x"...
+[11:00:41 AM] DATA: BIN: 01110100 01100101 01100100 00100000 01110011 01100101 01101110 01100100...
+[11:00:41 AM] ERROR: ⚠️ Device is sending console/debug output, not protobuf data
+[11:00:41 AM] ERROR: Console text: "ted sending (id=0xa4965a51 fr=0xda75d1c4 to=0xffffffff, WantAck=0, HopLim=3 Ch=0x8 encrypted len=44 hopStart=3 relay=0xc4 priority=10)
+[0m"
+[11:00:41 AM] INFO: 💡 Device may need to be switched to API mode or different baud rate
