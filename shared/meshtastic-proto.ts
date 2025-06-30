@@ -404,10 +404,12 @@ export class MeshtasticProtocol {
 
     const ToRadio = this.root.lookupType('meshtastic.ToRadio');
 
-    // Use the official want_config_id request to get device configuration
-    // This is the proper way to request node owner information
+    // Use the official want_config_id request with random integer value
+    // This matches the Python implementation exactly
+    const configId = Math.floor(Date.now() / 1000); // Unix timestamp as integer
+    
     const toRadio = ToRadio.create({
-      wantConfigId: true
+      wantConfigId: configId  // Integer value, not boolean
     });
 
     return ToRadio.encode(toRadio).finish();
@@ -463,17 +465,24 @@ export class MeshtasticProtocol {
     }
   }
 
-  // Frame data with Meshtastic header
+  // Frame data with Meshtastic header (matches Python implementation)
   public frameData(payload: Uint8Array): Uint8Array {
-    const header = new Uint8Array([0x94, 0xc3]); // Official Meshtastic magic bytes
-    const length = new Uint8Array(2);
-    length[0] = payload.length & 0xFF;
-    length[1] = (payload.length >> 8) & 0xFF;
+    // Python: struct.pack('<HH', 0xc394, len(payload))
+    // Creates 4-byte header: magic bytes (0xc394 little-endian) + payload length (16-bit little-endian)
+    const header = new Uint8Array(4);
     
-    const result = new Uint8Array(header.length + length.length + payload.length);
+    // Magic bytes: 0xc394 in little-endian format
+    header[0] = 0x94;
+    header[1] = 0xc3;
+    
+    // Payload length in little-endian format (16-bit)
+    header[2] = payload.length & 0xFF;
+    header[3] = (payload.length >> 8) & 0xFF;
+    
+    // Combine header and payload
+    const result = new Uint8Array(header.length + payload.length);
     result.set(header, 0);
-    result.set(length, header.length);
-    result.set(payload, header.length + length.length);
+    result.set(payload, header.length);
     
     return result;
   }
