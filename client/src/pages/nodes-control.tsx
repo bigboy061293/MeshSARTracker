@@ -89,9 +89,27 @@ export default function NodesControl() {
   const [protocol, setProtocol] = useState<MeshtasticProtocol | null>(null);
   const [protocolInitialized, setProtocolInitialized] = useState(false);
   const [dataBuffer, setDataBuffer] = useState<Uint8Array>(new Uint8Array(0));
+  // Console text buffer for extracting node ID from fragmented debug output
+  const [consoleBuffer, setConsoleBuffer] = useState<string>('');
   
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const logScrollRef = useRef<HTMLDivElement>(null);
+
+  // Extract node ID from console debug text 
+  const extractNodeIdFromConsoleText = (text: string): string | null => {
+    // Look for patterns like "!da75d1c4" or "0xda75d1c4" in debug output
+    const exclamationMatch = text.match(/!([a-f0-9]{8})/i);
+    if (exclamationMatch) {
+      return `!${exclamationMatch[1].toLowerCase()}`;
+    }
+    
+    const hexMatch = text.match(/0x([a-f0-9]{8})/i);
+    if (hexMatch) {
+      return `!${hexMatch[1].toLowerCase()}`;
+    }
+    
+    return null;
+  };
 
   // Check if Web Serial API is supported
   const isWebSerialSupported = 'serial' in navigator;
@@ -464,71 +482,114 @@ export default function NodesControl() {
     
     // Check if device is in console/debug mode (ASCII text output)
     const isConsoleOutput = data.every(b => (b >= 32 && b <= 126) || b === 0x1b || b === 0x0d || b === 0x0a);
-    if (isConsoleOutput && data.length > 5) {
-      const fullText = Array.from(data).map(b => String.fromCharCode(b)).join('');
+    
+    if (isConsoleOutput && data.length > 0) {
+      // Convert to text and add to console buffer
+      const fragmentText = Array.from(data).map(b => String.fromCharCode(b)).join('');
+      const newConsoleBuffer = consoleBuffer + fragmentText;
+      setConsoleBuffer(newConsoleBuffer);
+      
+      // Check if we have enough text to extract node ID
+      const extractedNodeId = extractNodeIdFromConsoleText(newConsoleBuffer);
+      if (extractedNodeId && extractedNodeId !== connectedNodeId) {
+        addLog('info', `🎯 FOUND NODE ID in console output: ${extractedNodeId}`);
+        setConnectedNodeId(extractedNodeId);
+        
+        // Create node record from console data
+        const nodeData = {
+          nodeId: extractedNodeId,
+          dataType: 'console_extraction',
+          rawData: { consoleText: newConsoleBuffer },
+          parsedData: { nodeId: extractedNodeId, source: 'console_debug' },
+          dataSize: newConsoleBuffer.length,
+          recordCount: 1
+        };
+        
+        // Store the node info
+        nodeInfoMutation.mutate(nodeData);
+      }
+      
       addLog('error', '⚠️ Device is sending console/debug output, not protobuf data');
-      addLog('error', `Console text: "${fullText}"`);
+      addLog('error', `Console text: "${fragmentText}"`);
       addLog('info', '💡 Device may need to be switched to API mode or different baud rate');
+      
+      // Keep recent console buffer (last 2000 chars to avoid memory issues)
+      if (newConsoleBuffer.length > 2000) {
+        setConsoleBuffer(newConsoleBuffer.slice(-2000));
+      }
+      
       return; // Don't process as protobuf
     }
     
+    // Clear console buffer when we get binary data
+    if (consoleBuffer.length > 0) {
+      setConsoleBuffer('');
+      addLog('info', '🔄 Cleared console buffer - receiving binary data');
+    }
+    
     // Check for Meshtastic frame patterns
-    if (data.length >= 4) {
-      if (data[0] === 0x94 && data[1] === 0xc3) {
-        addLog('info', '🔍 Detected Meshtastic frame header: 94 c3');
-        const length = data[2] | (data[3] << 8);
-        addLog('info', `📏 Frame length: ${length} bytes`);
-      } else if (data[0] === 0x94 && data[1] === 0x28) {
-        addLog('info', '🔍 Detected alternative frame header: 94 28');
+    if (data.length >= 2) {
+      if (data[0] === 0x94 && (data[1] === 0xc3 || data[1] === 0x28)) {
+        addLog('info', `🔍 Detected Meshtastic frame header: ${data[0].toString(16)} ${data[1].toString(16)}`);
+        if (data.length >= 4) {
+          const length = data[2] | (data[3] << 8);
+          addLog('info', `📏 Frame length: ${length} bytes`);
+        }
       } else {
         addLog('error', '⚠️ No valid Meshtastic frame header detected');
-        return; // Don't process invalid frames
       }
     }
     
     // Process protobuf packets if protocol is initialized
-    if (protocol && protocolInitialized) {
+    if (protocol && protocolInitialized && data.length > 0) {
       // Append new data to buffer
       const newBuffer = new Uint8Array(dataBuffer.length + data.length);
       newBuffer.set(dataBuffer);
       newBuffer.set(data, dataBuffer.length);
       
-      // Parse framed data using protobuf protocol
-      const { packets, remaining } = protocol.parseFramedData(newBuffer);
-      
-      // Process each complete packet
-      packets.forEach((packet, index) => {
-        try {
-          const parsedData = protocol.parseFromRadio(packet);
-          if (parsedData) {
-            addLog('info', `📦 Parsed protobuf packet ${index + 1}: ${parsedData.myInfo ? 'MyNodeInfo' : parsedData.nodeInfo ? 'NodeInfo' : parsedData.packet ? 'MeshPacket' : 'Unknown'}`);
-            
-            // Handle different packet types
-            if (parsedData.myInfo) {
-              addLog('info', '📱 Received MyNodeInfo response');
-              handleNodeInfoResponse(parsedData.myInfo);
-            } else if (parsedData.nodeInfo) {
-              addLog('info', '📊 Received NodeInfo response');
-              handleNodeInfoResponse(parsedData.nodeInfo);
-            } else if (parsedData.packet) {
-              addLog('info', '📡 Received mesh packet');
-              handleMeshPacket(parsedData.packet);
+      try {
+        // Parse framed data using protobuf protocol
+        const { packets, remaining } = protocol.parseFramedData(newBuffer);
+        
+        // Process each complete packet
+        packets.forEach((packet, index) => {
+          try {
+            const parsedData = protocol.parseFromRadio(packet);
+            if (parsedData) {
+              addLog('info', `📦 Parsed protobuf packet ${index + 1}: ${parsedData.myInfo ? 'MyNodeInfo' : parsedData.nodeInfo ? 'NodeInfo' : parsedData.packet ? 'MeshPacket' : 'Unknown'}`);
+              
+              // Handle different packet types
+              if (parsedData.myInfo) {
+                addLog('info', '📱 Received MyNodeInfo response');
+                handleNodeInfoResponse(parsedData.myInfo);
+              } else if (parsedData.nodeInfo) {
+                addLog('info', '📊 Received NodeInfo response');
+                handleNodeInfoResponse(parsedData.nodeInfo);
+              } else if (parsedData.packet) {
+                addLog('info', '📡 Received mesh packet');
+                handleMeshPacket(parsedData.packet);
+              }
             }
+          } catch (error) {
+            addLog('error', `❌ Failed to parse protobuf packet: ${error}`);
           }
-        } catch (error) {
-          addLog('error', `❌ Failed to parse protobuf packet: ${error}`);
-        }
-      });
-      
-      // Update buffer with remaining data
-      setDataBuffer(remaining);
-    } else {
-      // Fallback: Basic packet detection if protocol not ready
-      if (data.length > 4) {
-        if (data[0] === 0x94 && data[1] === 0x28) {
-          addLog('info', '🔍 Detected Meshtastic packet frame (protocol not ready)');
-        }
+        });
+        
+        // Update buffer with remaining data
+        setDataBuffer(remaining);
+      } catch (error) {
+        addLog('error', `❌ Frame parsing error: ${error}`);
+        // Clear buffer on parse error to prevent corruption
+        setDataBuffer(new Uint8Array(0));
       }
+    } else if (data.length > 0) {
+      // Store binary data in buffer even if protocol not ready
+      const newBuffer = new Uint8Array(dataBuffer.length + data.length);
+      newBuffer.set(dataBuffer);
+      newBuffer.set(data, dataBuffer.length);
+      setDataBuffer(newBuffer);
+      
+      addLog('info', '📦 Binary data buffered (protocol not ready)');
     }
   };
 
