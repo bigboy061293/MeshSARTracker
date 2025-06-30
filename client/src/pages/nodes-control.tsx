@@ -63,7 +63,8 @@ import {
   Download,
   Search,
   Database,
-  Info
+  Info,
+  RefreshCw
 } from "lucide-react";
 
 interface LogEntry {
@@ -185,6 +186,48 @@ export default function NodesControl() {
         logScrollRef.current.scrollTop = logScrollRef.current.scrollHeight;
       }
     }, 10);
+  };
+
+  // Switch device to API mode (from console mode)
+  const switchToApiMode = async () => {
+    if (!port || !port.writable) {
+      addLog('error', 'Cannot switch to API mode - port not writable');
+      return;
+    }
+
+    try {
+      addLog('info', '🔄 Attempting to switch device from console to API mode...');
+      
+      const writer = port.writable.getWriter();
+      
+      try {
+        // Send commands to exit console mode and enter API mode
+        // These are common Meshtastic console commands to switch modes
+        const commands = [
+          '\r\n',           // Send newline to clear any partial commands
+          'exit\r\n',       // Try to exit current mode
+          'api\r\n',        // Switch to API mode
+          '\x03',           // Ctrl+C to interrupt
+          '\x04',           // Ctrl+D to exit
+        ];
+        
+        for (const command of commands) {
+          const commandBytes = new TextEncoder().encode(command);
+          addLog('info', `📤 Sending command: "${command.replace('\r\n', '\\r\\n').replace('\x03', 'Ctrl+C').replace('\x04', 'Ctrl+D')}"`);
+          await writer.write(commandBytes);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Wait between commands
+        }
+        
+        addLog('info', '✅ API mode switch commands sent - waiting for device response...');
+        
+      } finally {
+        writer.releaseLock();
+      }
+      
+    } catch (error: any) {
+      addLog('error', `❌ Failed to switch to API mode: ${error.message}`);
+      console.error('API mode switch error:', error);
+    }
   };
 
   // Send configuration request to establish connection (like phone app does)
@@ -397,6 +440,16 @@ export default function NodesControl() {
     addLog('data', `TXT: "${textData}"${data.length > 32 ? '...' : ''}`);
     addLog('data', `BIN: ${binaryData}${data.length > 8 ? '...' : ''}`);
     
+    // Check if device is in console/debug mode (ASCII text output)
+    const isConsoleOutput = data.every(b => (b >= 32 && b <= 126) || b === 0x1b || b === 0x0d || b === 0x0a);
+    if (isConsoleOutput && data.length > 5) {
+      const fullText = Array.from(data).map(b => String.fromCharCode(b)).join('');
+      addLog('error', '⚠️ Device is sending console/debug output, not protobuf data');
+      addLog('error', `Console text: "${fullText}"`);
+      addLog('info', '💡 Device may need to be switched to API mode or different baud rate');
+      return; // Don't process as protobuf
+    }
+    
     // Check for Meshtastic frame patterns
     if (data.length >= 4) {
       if (data[0] === 0x94 && data[1] === 0xc3) {
@@ -405,6 +458,9 @@ export default function NodesControl() {
         addLog('info', `📏 Frame length: ${length} bytes`);
       } else if (data[0] === 0x94 && data[1] === 0x28) {
         addLog('info', '🔍 Detected alternative frame header: 94 28');
+      } else {
+        addLog('error', '⚠️ No valid Meshtastic frame header detected');
+        return; // Don't process invalid frames
       }
     }
     
@@ -969,6 +1025,14 @@ export default function NodesControl() {
                   >
                     <Database className="h-4 w-4" />
                     {nodeDbMutation.isPending ? 'Reading...' : 'Read NodeDB'}
+                  </Button>
+                  <Button 
+                    onClick={switchToApiMode}
+                    variant="secondary"
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Switch to API Mode
                   </Button>
                   <Button 
                     onClick={disconnectDevice}
