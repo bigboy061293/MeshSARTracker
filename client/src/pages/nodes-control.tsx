@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MeshtasticProtocol } from "@shared/meshtastic-proto";
 
 // Web Serial API type declarations
 declare global {
@@ -67,7 +68,7 @@ import {
 
 interface LogEntry {
   timestamp: string;
-  type: 'info' | 'data' | 'error' | 'connect' | 'disconnect';
+  type: 'info' | 'data' | 'error' | 'connect' | 'disconnect' | 'protocol' | 'success';
   message: string;
   rawData?: Uint8Array;
 }
@@ -84,12 +85,32 @@ export default function NodesControl() {
   const [bytesReceived, setBytesReceived] = useState(0);
   const [packetsReceived, setPacketsReceived] = useState(0);
   const [connectedNodeId, setConnectedNodeId] = useState<string | null>(null);
+  const [protocol, setProtocol] = useState<MeshtasticProtocol | null>(null);
+  const [protocolInitialized, setProtocolInitialized] = useState(false);
+  const [dataBuffer, setDataBuffer] = useState<Uint8Array>(new Uint8Array(0));
   
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const logScrollRef = useRef<HTMLDivElement>(null);
 
   // Check if Web Serial API is supported
   const isWebSerialSupported = 'serial' in navigator;
+
+  // Initialize Meshtastic protocol
+  useEffect(() => {
+    const initProtocol = async () => {
+      try {
+        const meshProtocol = MeshtasticProtocol.getInstance();
+        await meshProtocol.initialize();
+        setProtocol(meshProtocol);
+        setProtocolInitialized(true);
+        addLog('info', '✅ Meshtastic protobuf protocol initialized');
+      } catch (error) {
+        addLog('error', `Failed to initialize Meshtastic protocol: ${error}`);
+      }
+    };
+    
+    initProtocol();
+  }, []);
 
   // NodeDB mutation
   const nodeDbMutation = useMutation({
@@ -312,30 +333,95 @@ export default function NodesControl() {
   };
 
   const processReceivedData = (data: Uint8Array) => {
-    // Convert to hex string for display
-    const hexString = Array.from(data)
-      .map(byte => byte.toString(16).padStart(2, '0'))
+    // Log hex data for debugging (first 16 bytes)
+    const hexData = Array.from(data.slice(0, 16))
+      .map(b => b.toString(16).padStart(2, '0'))
       .join(' ');
-
-    // Try to convert to ASCII for readable text
-    const asciiString = Array.from(data)
-      .map(byte => (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.')
-      .join('');
-
-    // Log the raw data
-    addLog('data', `Received ${data.length} bytes: ${hexString}`, data);
     
-    // If it looks like text, also log the ASCII representation
-    if (asciiString.includes('Meshtastic') || asciiString.match(/[a-zA-Z]{3,}/)) {
-      addLog('data', `ASCII: ${asciiString}`);
+    addLog('data', `📥 Received ${data.length} bytes: ${hexData}${data.length > 16 ? '...' : ''}`);
+    
+    // Process protobuf packets if protocol is initialized
+    if (protocol && protocolInitialized) {
+      // Append new data to buffer
+      const newBuffer = new Uint8Array(dataBuffer.length + data.length);
+      newBuffer.set(dataBuffer);
+      newBuffer.set(data, dataBuffer.length);
+      
+      // Parse framed data using protobuf protocol
+      const { packets, remaining } = protocol.parseFramedData(newBuffer);
+      
+      // Process each complete packet
+      packets.forEach((packet, index) => {
+        try {
+          const parsedData = protocol.parseFromRadio(packet);
+          if (parsedData) {
+            addLog('info', `📦 Parsed protobuf packet ${index + 1}: ${parsedData.myInfo ? 'MyNodeInfo' : parsedData.nodeInfo ? 'NodeInfo' : parsedData.packet ? 'MeshPacket' : 'Unknown'}`);
+            
+            // Handle different packet types
+            if (parsedData.myInfo) {
+              addLog('info', '📱 Received MyNodeInfo response');
+              handleNodeInfoResponse(parsedData.myInfo);
+            } else if (parsedData.nodeInfo) {
+              addLog('info', '📊 Received NodeInfo response');
+              handleNodeInfoResponse(parsedData.nodeInfo);
+            } else if (parsedData.packet) {
+              addLog('info', '📡 Received mesh packet');
+              handleMeshPacket(parsedData.packet);
+            }
+          }
+        } catch (error) {
+          addLog('error', `❌ Failed to parse protobuf packet: ${error}`);
+        }
+      });
+      
+      // Update buffer with remaining data
+      setDataBuffer(remaining);
+    } else {
+      // Fallback: Basic packet detection if protocol not ready
+      if (data.length > 4) {
+        if (data[0] === 0x94 && data[1] === 0x28) {
+          addLog('info', '🔍 Detected Meshtastic packet frame (protocol not ready)');
+        }
+      }
     }
+  };
 
-    // Basic Meshtastic packet detection
-    if (data.length > 4) {
-      // Look for potential Meshtastic packet markers
-      if (data[0] === 0x94 && data[1] === 0xc3) {
-        addLog('info', 'Detected potential Meshtastic packet');
-        analyzePacket(data);
+  // Handle node info responses from protobuf
+  const handleNodeInfoResponse = (nodeInfo: any) => {
+    try {
+      const convertedInfo = protocol?.convertNodeInfo(nodeInfo);
+      if (convertedInfo) {
+        addLog('info', `📱 Node Info: ${convertedInfo.nodeInfo.longName} (${convertedInfo.nodeInfo.hwModel})`);
+        
+        // Store the node info
+        nodeInfoMutation.mutate({
+          nodeId: convertedInfo.nodeInfo.nodeId,
+          dataType: 'node_info',
+          rawData: nodeInfo,
+          parsedData: convertedInfo,
+          dataSize: JSON.stringify(nodeInfo).length,
+          recordCount: 1
+        });
+      }
+    } catch (error) {
+      addLog('error', `❌ Failed to process node info: ${error}`);
+    }
+  };
+
+  // Handle mesh packets from protobuf
+  const handleMeshPacket = (packet: any) => {
+    addLog('info', `📡 Mesh packet from ${packet.from} to ${packet.to}`);
+    
+    // Could process different payload types here
+    if (packet.payloadVariant) {
+      try {
+        // Decode data payload if present
+        const dataPayload = protocol?.parseFromRadio(packet.payloadVariant);
+        if (dataPayload) {
+          addLog('info', `📋 Payload type: ${dataPayload.portnum || 'unknown'}`);
+        }
+      } catch (error) {
+        // Ignore payload parsing errors - not all packets have decodable payloads
       }
     }
   };
@@ -428,8 +514,6 @@ export default function NodesControl() {
   };
 
   const readNodeInfo = async () => {
-    console.log('ReadNodeInfo clicked:', { isConnected, port: !!port, connectedNodeId });
-    
     if (!isConnected || !port) {
       toast({
         title: "Cannot Read Node Info",
@@ -439,20 +523,28 @@ export default function NodesControl() {
       return;
     }
 
-    // If no node ID is set, generate one now
+    if (!protocol || !protocolInitialized) {
+      toast({
+        title: "Protocol Not Ready",
+        description: "Meshtastic protobuf protocol is not initialized",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate node ID if needed
     let nodeId: string = connectedNodeId || '';
     if (!nodeId) {
       const portInfo = port.getInfo();
       nodeId = portInfo.usbVendorId && portInfo.usbProductId 
-        ? `${portInfo.usbVendorId.toString(16)}_${portInfo.usbProductId.toString(16)}_${Date.now().toString(36)}`
-        : `node_${Date.now().toString(36)}`;
+        ? `!${portInfo.usbVendorId.toString(16).padStart(4, '0')}${portInfo.usbProductId.toString(16).padStart(4, '0')}`
+        : `!${Date.now().toString(16).slice(-8)}`;
       setConnectedNodeId(nodeId);
-      addLog('info', `Generated node ID: ${nodeId}`);
+      addLog('info', `📍 Generated node ID: ${nodeId}`);
     }
 
     try {
-      addLog('info', 'Starting node info read operation...');
-      addLog('info', 'Sending proper Meshtastic protocol requests...');
+      addLog('info', '🔍 Starting protobuf-compliant node info read...');
       
       if (!port.writable) {
         throw new Error('Port is not writable');
@@ -461,212 +553,77 @@ export default function NodesControl() {
       const writer = port.writable.getWriter();
       
       try {
-        // Send multiple requests following Meshtastic protocol
-        // 1. Request MyNodeInfo (Admin message type 1)
-        const myNodeInfoRequest = new Uint8Array([
-          0x94, 0xc3,           // Magic bytes
-          0x0a, 0x00,           // Length (will be calculated)
-          0x08, 0x01,           // Message type: Admin
-          0x12, 0x04,           // Admin payload
-          0x08, 0x01,           // Get MyNodeInfo request
-          0x18, 0x00            // Request ID
-        ]);
+        // Create proper protobuf node info request
+        const nodeInfoRequest = protocol.createNodeInfoRequest(Date.now() % 65536);
+        const framedRequest = protocol.frameData(nodeInfoRequest);
         
-        // Calculate and set length
-        const payloadLength = myNodeInfoRequest.length - 4;
-        myNodeInfoRequest[2] = payloadLength & 0xFF;
-        myNodeInfoRequest[3] = (payloadLength >> 8) & 0xFF;
+        addLog('info', `📤 Sending protobuf MyNodeInfo request (${framedRequest.length} bytes)`);
+        await writer.write(framedRequest);
         
-        addLog('info', 'Sending MyNodeInfo request...');
-        await writer.write(myNodeInfoRequest);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        addLog('info', '⏳ Waiting for protobuf responses (5 seconds)...');
         
-        // 2. Request Device Config
-        const deviceConfigRequest = new Uint8Array([
-          0x94, 0xc3,           // Magic bytes
-          0x0c, 0x00,           // Length
-          0x08, 0x02,           // Message type: Admin
-          0x12, 0x06,           // Admin payload
-          0x08, 0x02,           // Get Config request
-          0x10, 0x01,           // Config type: Device
-          0x18, 0x01            // Request ID
-        ]);
+        // Wait for responses to be processed by the protobuf handler
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
-        addLog('info', 'Sending Device Config request...');
-        await writer.write(deviceConfigRequest);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // 3. Request Channel Config
-        const channelConfigRequest = new Uint8Array([
-          0x94, 0xc3,           // Magic bytes
-          0x0c, 0x00,           // Length
-          0x08, 0x03,           // Message type: Admin
-          0x12, 0x06,           // Admin payload
-          0x08, 0x03,           // Get Config request
-          0x10, 0x02,           // Config type: Channel
-          0x18, 0x02            // Request ID
-        ]);
-        
-        addLog('info', 'Sending Channel Config request...');
-        await writer.write(channelConfigRequest);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // 4. Request Node List
-        const nodeListRequest = new Uint8Array([
-          0x94, 0xc3,           // Magic bytes
-          0x08, 0x00,           // Length
-          0x08, 0x04,           // Message type: NodeInfo
-          0x12, 0x02,           // NodeInfo payload
-          0x08, 0xFF            // Request all nodes
-        ]);
-        
-        addLog('info', 'Sending Node List request...');
-        await writer.write(nodeListRequest);
+        addLog('info', '✅ Protobuf node info request completed');
         
       } finally {
         writer.releaseLock();
       }
       
-      addLog('info', 'All requests sent. Waiting for responses...');
-      
-      // Set up response collection
-      let nodeInfoData: any = null;
-      let responseReceived = false;
-      const startTime = Date.now();
-      const timeout = 10000; // 10 second timeout for responses
-      
-      // Enhanced data processor to handle Meshtastic responses
-      const responseHandler = (data: Uint8Array) => {
-        if (data.length < 4) return;
-        
-        // Check for Meshtastic frame start
-        if (data[0] === 0x94 && data[1] === 0xc3) {
-          const payloadLength = data[2] | (data[3] << 8);
-          if (data.length >= 4 + payloadLength) {
-            const payload = data.slice(4, 4 + payloadLength);
-            addLog('data', `Received Meshtastic frame: ${payload.length} bytes payload`);
-            
-            // Try to parse the response
-            const parsedResponse = parseResponse(payload);
-            if (parsedResponse) {
-              if (!nodeInfoData) {
-                nodeInfoData = {
-                  nodeInfo: {},
-                  deviceMetrics: {},
-                  position: { latitude: 0, longitude: 0, altitude: 0 },
-                  connectionInfo: {},
-                  responses: []
-                };
-              }
-              
-              nodeInfoData.responses.push(parsedResponse);
-              
-              // Merge response data
-              if (parsedResponse.type === 'myNodeInfo') {
-                Object.assign(nodeInfoData.nodeInfo, parsedResponse.data);
-                responseReceived = true;
-              } else if (parsedResponse.type === 'deviceConfig') {
-                Object.assign(nodeInfoData.nodeInfo, parsedResponse.data);
-              } else if (parsedResponse.type === 'telemetry') {
-                Object.assign(nodeInfoData.deviceMetrics, parsedResponse.data);
-              }
-            }
-          }
-        }
-      };
-      
-      // Set up response monitoring (the existing processReceivedData will continue running)
-      // We just monitor for incoming data during our timeout period
-      
-      // Wait for responses
-      let attempts = 0;
-      const maxAttempts = timeout / 100;
-      
-      while (!responseReceived && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-        
-        // Check if we have any data at all
-        if (attempts % 30 === 0) { // Every 3 seconds
-          addLog('info', `Waiting for responses... (${Math.floor(attempts / 10)}s)`);
-        }
-      }
-      
-      // Note: Original processor will resume automatically
-      
-      // Generate node info from available data or create fallback
-      if (!nodeInfoData || Object.keys(nodeInfoData.nodeInfo).length === 0) {
-        addLog('info', 'No specific responses received - creating info from connection');
-        const portInfo = port?.getInfo();
-        nodeInfoData = {
-          nodeInfo: {
-            nodeId: nodeId,
-            longName: "Meshtastic Device",
-            shortName: "MESH",
-            macAddress: portInfo?.usbVendorId ? `${portInfo.usbVendorId.toString(16).toUpperCase()}:${portInfo.usbProductId?.toString(16).toUpperCase()}` : "Unknown",
-            hwModel: "USB Connected Device",
-            hwModelSlug: "usb-device",
-            firmwareVersion: "Unknown",
-            region: "Unknown",
-            modemPreset: "Unknown",
-            hasWifi: false,
-            hasBluetooth: false,
-            hasEthernet: false,
-            role: "CLIENT",
-            rebootCount: 0,
-            uptimeSeconds: Math.floor((Date.now() - startTime) / 1000)
-          },
-          deviceMetrics: {
-            batteryLevel: 0,
-            voltage: 0,
-            channelUtilization: 0,
-            airUtilTx: 0
-          },
-          position: {
-            latitude: 0,
-            longitude: 0,
-            altitude: 0,
-            accuracy: 0,
-            timestamp: new Date().toISOString()
-          },
-          connectionInfo: {
-            vendorId: portInfo?.usbVendorId || 0,
-            productId: portInfo?.usbProductId || 0,
-            connected: true,
-            protocolRequests: 4,
-            responsesReceived: nodeInfoData?.responses?.length || 0
-          },
-          isRealData: responseReceived,
-          note: responseReceived ? "Data from device responses" : "Fallback connection info"
-        };
-      }
-      
-      // Display results
-      addLog('info', `=== Node Information ===`);
-      addLog('info', `Node ID: ${nodeInfoData.nodeInfo.nodeId}`);
-      addLog('info', `Long Name: ${nodeInfoData.nodeInfo.longName}`);
-      addLog('info', `Short Name: ${nodeInfoData.nodeInfo.shortName}`);
-      addLog('info', `Hardware: ${nodeInfoData.nodeInfo.hwModel}`);
-      addLog('info', `Firmware: ${nodeInfoData.nodeInfo.firmwareVersion}`);
-      addLog('info', `Region: ${nodeInfoData.nodeInfo.region}`);
-      addLog('info', `Role: ${nodeInfoData.nodeInfo.role}`);
-      addLog('info', `Responses: ${nodeInfoData.connectionInfo.responsesReceived}/4 requests`);
-      
-      // Store the node info data
-      await nodeInfoMutation.mutateAsync({
-        nodeId: nodeId,
-        dataType: 'node_info',
-        rawData: nodeInfoData,
-        parsedData: nodeInfoData,
-        dataSize: JSON.stringify(nodeInfoData).length,
-        recordCount: 1
-      });
-      
-      addLog('info', 'Node info read completed successfully');
+      addLog('info', '✅ Node info request completed - responses will be processed by protobuf handler');
       
     } catch (error: any) {
-      addLog('error', `Node info read failed: ${error.message}`);
+      addLog('error', `❌ Node info read failed: ${error.message}`);
       console.error('Node info read error:', error);
+    }
+  };
+
+  // Read NodeDB function with protobuf protocol implementation
+  const readNodeDb = async () => {
+    if (!port || !isConnected) {
+      addLog('error', '❌ No serial port connected');
+      return;
+    }
+
+    addLog('info', '📋 Starting NodeDB read with protobuf protocol...');
+
+    try {
+      if (!port.writable) {
+        addLog('error', '❌ Serial port is not writable');
+        return;
+      }
+
+      const writer = port.writable.getWriter();
+      
+      try {
+        // Initialize protobuf protocol
+        const protocol = MeshtasticProtocol.getInstance();
+        await protocol.initialize();
+        
+        // Create proper protobuf NodeDB request
+        const nodeDbRequest = protocol.createNodeDbRequest();
+        const framedRequest = protocol.frameData(nodeDbRequest);
+        
+        addLog('info', `📤 Sending protobuf NodeDB request (${framedRequest.length} bytes)`);
+        await writer.write(framedRequest);
+        
+        addLog('info', '⏳ Waiting for NodeDB protobuf responses (5 seconds)...');
+        
+        // Wait for responses to be processed by the protobuf handler
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        addLog('info', '✅ Protobuf NodeDB request completed');
+        
+      } finally {
+        writer.releaseLock();
+      }
+      
+      addLog('info', '✅ NodeDB request completed - responses will be processed by protobuf handler');
+      
+    } catch (error: any) {
+      addLog('error', `❌ NodeDB read failed: ${error.message}`);
+      console.error('NodeDB read error:', error);
     }
   };
   
@@ -775,99 +732,7 @@ export default function NodesControl() {
     return 0;
   };
 
-  const readNodeDb = async () => {
-    // Debug logging
-    console.log('ReadNodeDB clicked:', { isConnected, port: !!port, connectedNodeId });
-    
-    if (!isConnected || !port) {
-      toast({
-        title: "Cannot Read NodeDB",
-        description: "Please connect to a Meshtastic node first",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    // If no node ID is set, generate one now
-    let nodeId: string = connectedNodeId || '';
-    if (!nodeId) {
-      const portInfo = port.getInfo();
-      nodeId = portInfo.usbVendorId && portInfo.usbProductId 
-        ? `${portInfo.usbVendorId.toString(16)}_${portInfo.usbProductId.toString(16)}_${Date.now().toString(36)}`
-        : `node_${Date.now().toString(36)}`;
-      setConnectedNodeId(nodeId);
-      addLog('info', `Generated node ID: ${nodeId}`);
-    }
-
-    try {
-      addLog('info', 'Starting NodeDB read operation...');
-      
-      // For now, we'll simulate reading the NodeDB by sending a specific command
-      // In a real implementation, you would send the appropriate Meshtastic protocol commands
-      
-      // Generate a simulated NodeDB read command (this would be replaced with actual Meshtastic protocol)
-      const nodeDbCommand = new Uint8Array([
-        0x94, 0x28, // Meshtastic frame start
-        0x00, 0x0A, // Length
-        0x08, 0x01, // NodeDB request command
-        0x12, 0x04, // Request all nodes
-        0x18, 0x00, // No specific filter
-        0x00, 0x00  // CRC placeholder
-      ]);
-
-      if (!port.writable) {
-        throw new Error('Port is not writable');
-      }
-
-      const writer = port.writable.getWriter();
-      await writer.write(nodeDbCommand);
-      writer.releaseLock();
-      
-      addLog('info', `Sent NodeDB read command to node ${nodeId}`);
-      
-      // Simulate waiting for response and collecting data
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // For demonstration, create a simulated NodeDB response
-      const simulatedNodeDbData = {
-        nodes: [
-          {
-            nodeId: nodeId,
-            longName: "Meshtastic Node",
-            shortName: "MN01",
-            hwModel: "TTGO_T_BEAM",
-            position: { lat: 37.7749, lon: -122.4194 },
-            batteryLevel: 85,
-            snr: 12.5,
-            lastHeard: new Date().toISOString()
-          }
-        ],
-        messages: [],
-        config: {
-          device: { role: "CLIENT" },
-          position: { positionBroadcastSecs: 900 },
-          power: { isPowerSaving: false }
-        }
-      };
-      
-      // Store the NodeDB data
-      await nodeDbMutation.mutateAsync({
-        nodeId: nodeId,
-        dataType: 'complete_db',
-        rawData: simulatedNodeDbData,
-        parsedData: simulatedNodeDbData,
-        dataSize: JSON.stringify(simulatedNodeDbData).length,
-        recordCount: simulatedNodeDbData.nodes.length
-      });
-      
-      addLog('info', `NodeDB read completed. Found ${simulatedNodeDbData.nodes.length} nodes`);
-      addLog('info', 'NodeDB data saved to database');
-      
-    } catch (error: any) {
-      addLog('error', `NodeDB read failed: ${error.message}`);
-      console.error('NodeDB read error:', error);
-    }
-  };
 
   // Check for existing connections on page load
   useEffect(() => {
