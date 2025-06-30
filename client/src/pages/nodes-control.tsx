@@ -491,49 +491,11 @@ export default function NodesControl() {
       // Start reading data
       startReading(selectedPort);
       
-      // OFFICIAL MESHTASTIC PROTOCOL SEQUENCE
-      // According to official documentation: send ToRadio.startConfig to trigger binary mode
-      setTimeout(async () => {
-        addLog('info', '🔧 Following official Meshtastic protocol...');
-        
-        if (selectedPort.writable) {
-          const writer = selectedPort.writable.getWriter();
-          try {
-            // Step 1: Send ToRadio.startConfig protobuf (this is what triggers binary mode)
-            addLog('info', '📤 Sending ToRadio.startConfig to trigger binary mode...');
-            
-            // Create ToRadio protobuf with startConfig
-            // According to docs: "Write a ToRadio.startConfig protobuf to the ToRadio endpoint"
-            const toRadioConfig = new Uint8Array([
-              0x08, 0x01  // startConfig = 1 in protobuf format
-            ]);
-            
-            // Frame it with official 4-byte header: START1(0x94) + START2(0xc3) + MSB_LEN + LSB_LEN
-            const framedPacket = new Uint8Array(4 + toRadioConfig.length);
-            framedPacket[0] = 0x94;  // START1
-            framedPacket[1] = 0xc3;  // START2  
-            framedPacket[2] = (toRadioConfig.length >> 8) & 0xff;  // MSB of length
-            framedPacket[3] = toRadioConfig.length & 0xff;  // LSB of length
-            framedPacket.set(toRadioConfig, 4);  // Payload
-            
-            await writer.write(framedPacket);
-            addLog('info', `✅ Sent ToRadio.startConfig (${framedPacket.length} bytes)`);
-            
-            // According to docs: device should now switch to binary mode and send configuration
-            addLog('info', '⏳ Device should now switch to binary protobuf mode...');
-            
-          } finally {
-            writer.releaseLock();
-          }
-        }
-        
-        // Wait for device to respond with configuration data
-        setTimeout(() => {
-          addLog('info', '📡 Listening for configuration response from device...');
-          addLog('info', '💡 If still seeing console output, device may need manual configuration');
-        }, 2000);
-        
-      }, 1000); // Wait 1 second after connection established
+      // Device is working correctly - just listen for data
+      setTimeout(() => {
+        addLog('info', '📡 Listening for device data...');
+        addLog('info', '🔧 Serial data buffering enabled to handle fragmentation');
+      }, 500);
 
     } catch (error: any) {
       console.error('Serial connection error:', error);
@@ -547,6 +509,33 @@ export default function NodesControl() {
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  // Buffer to accumulate fragmented serial data
+  let serialDataBuffer = new Uint8Array(0);
+  let bufferTimeout: NodeJS.Timeout | null = null;
+
+  const accumulateSerialData = (newData: Uint8Array) => {
+    // Accumulate data into buffer
+    const combinedBuffer = new Uint8Array(serialDataBuffer.length + newData.length);
+    combinedBuffer.set(serialDataBuffer, 0);
+    combinedBuffer.set(newData, serialDataBuffer.length);
+    serialDataBuffer = combinedBuffer;
+
+    // Clear any existing timeout
+    if (bufferTimeout) {
+      clearTimeout(bufferTimeout);
+    }
+
+    // Set timeout to process accumulated data after a brief pause
+    bufferTimeout = setTimeout(() => {
+      if (serialDataBuffer.length > 0) {
+        // Process the accumulated data
+        processReceivedData(serialDataBuffer);
+        // Clear the buffer
+        serialDataBuffer = new Uint8Array(0);
+      }
+    }, 100); // Wait 100ms for more data to accumulate
   };
 
   const startReading = async (serialPort: SerialPort) => {
@@ -574,8 +563,8 @@ export default function NodesControl() {
           setBytesReceived(prev => prev + value.length);
           setPacketsReceived(prev => prev + 1);
 
-          // Process the received data
-          processReceivedData(value);
+          // Accumulate fragmented data instead of processing immediately
+          accumulateSerialData(value);
         }
       }
     } catch (error: any) {
