@@ -636,9 +636,9 @@ export default function NodesControl() {
         nodeInfoMutation.mutate(nodeData);
       }
       
-      addLog('error', '⚠️ Device is sending console/debug output, not protobuf data');
-      addLog('error', `Console text: "${fragmentText}"`);
-      addLog('info', '💡 Device may need to be switched to API mode or different baud rate');
+      addLog('info', '📜 Processing console debug output from device');
+      addLog('data', `Console: "${fragmentText.slice(0, 100)}${fragmentText.length > 100 ? '...' : ''}"`);
+      // Note: Console mode is normal for many Meshtastic devices and provides valuable debug info
       
       // Keep recent console buffer (last 2000 chars to avoid memory issues)
       if (newConsoleBuffer.length > 2000) {
