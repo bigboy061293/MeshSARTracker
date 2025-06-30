@@ -261,14 +261,11 @@ export default function NodesControl() {
       setPort(selectedPort);
       setIsConnected(true);
       
-      // Generate a node ID based on the port info
-      const nodeId = portInfo.usbVendorId && portInfo.usbProductId 
-        ? `${portInfo.usbVendorId.toString(16)}_${portInfo.usbProductId.toString(16)}_${Date.now().toString(36)}`
-        : `node_${Date.now().toString(36)}`;
-      setConnectedNodeId(nodeId);
+      // Don't generate fake node ID - wait for real device response
+      setConnectedNodeId(null);
       
       addLog('connect', 'Successfully connected to Meshtastic node via COM port');
-      addLog('info', `Node ID: ${nodeId}`);
+      addLog('info', '🔍 Waiting for device to provide real node ID...');
       addLog('info', `Baud rate: 115200, Data bits: 8, Stop bits: 1, Parity: none`);
       
       toast({
@@ -391,11 +388,19 @@ export default function NodesControl() {
     try {
       const convertedInfo = protocol?.convertNodeInfo(nodeInfo);
       if (convertedInfo) {
+        const realNodeId = convertedInfo.nodeInfo.nodeId;
         addLog('info', `📱 Node Info: ${convertedInfo.nodeInfo.longName} (${convertedInfo.nodeInfo.hwModel})`);
+        addLog('info', `🔑 Real node ID: ${realNodeId}`);
+        
+        // Update the connected node ID with the real one from the device
+        if (realNodeId && realNodeId !== connectedNodeId) {
+          setConnectedNodeId(realNodeId);
+          addLog('info', `✅ Updated node ID from ${connectedNodeId} to ${realNodeId}`);
+        }
         
         // Store the node info
         nodeInfoMutation.mutate({
-          nodeId: convertedInfo.nodeInfo.nodeId,
+          nodeId: realNodeId,
           dataType: 'node_info',
           rawData: nodeInfo,
           parsedData: convertedInfo,
@@ -532,15 +537,11 @@ export default function NodesControl() {
       return;
     }
 
-    // Generate node ID if needed
-    let nodeId: string = connectedNodeId || '';
-    if (!nodeId) {
-      const portInfo = port.getInfo();
-      nodeId = portInfo.usbVendorId && portInfo.usbProductId 
-        ? `!${portInfo.usbVendorId.toString(16).padStart(4, '0')}${portInfo.usbProductId.toString(16).padStart(4, '0')}`
-        : `!${Date.now().toString(16).slice(-8)}`;
-      setConnectedNodeId(nodeId);
-      addLog('info', `📍 Generated node ID: ${nodeId}`);
+    // Check if we already have a real node ID
+    if (connectedNodeId && connectedNodeId.startsWith('!') && connectedNodeId.length === 9) {
+      addLog('info', `🔑 Using existing real node ID: ${connectedNodeId}`);
+    } else {
+      addLog('info', '🔍 No real node ID yet - will be extracted from device response');
     }
 
     try {

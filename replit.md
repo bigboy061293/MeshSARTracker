@@ -115,6 +115,7 @@ MeshTac is a full-stack web application designed for Search and Rescue (SAR) ope
 - June 29, 2025: Fixed serial port connection persistence in Nodes Control Mode - resolved issue where navigating between pages would show "Disconnected" status despite active COM port connection, added automatic connection detection and restoration on page load, improved serial port cleanup and status tracking for seamless user experience
 - June 29, 2025: Resolved NodeDB storage bug - confirmed database storage functionality works perfectly, issue was authentication-related not data persistence, NodeDB data successfully saves to PostgreSQL with complete structured data including node details, configuration, messages, and metadata
 - June 29, 2025: Implemented "Read Info" button in Nodes Control Mode - added comprehensive node information reading functionality similar to Meshtastic CLI `--info` command, displays hardware model, firmware version, battery status, position data, uptime, and device capabilities with structured logging and database storage
+- June 30, 2025: Fixed node ID extraction from real Meshtastic devices - replaced fake USB-based node ID generation (like "2886_59_mcij12sx") with authentic protobuf extraction of real device node IDs (like "!da75d1c4"), system now properly reads and updates with actual device-provided node IDs from protobuf MyNodeInfo responses, ensuring accurate node identification for SAR operations
 
 ## User Preferences
 
