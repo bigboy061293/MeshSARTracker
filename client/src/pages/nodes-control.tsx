@@ -491,43 +491,49 @@ export default function NodesControl() {
       // Start reading data
       startReading(selectedPort);
       
-      // IMMEDIATE API MODE FORCING
-      // Many Meshtastic devices get stuck in console mode and need immediate intervention
+      // OFFICIAL MESHTASTIC PROTOCOL SEQUENCE
+      // According to official documentation: send ToRadio.startConfig to trigger binary mode
       setTimeout(async () => {
-        addLog('info', '🔧 Starting immediate API mode transition...');
+        addLog('info', '🔧 Following official Meshtastic protocol...');
         
         if (selectedPort.writable) {
           const writer = selectedPort.writable.getWriter();
           try {
-            // Send immediate binary mode trigger
-            addLog('info', '📤 Sending immediate binary mode trigger...');
-            await writer.write(new Uint8Array([0x94, 0xc3, 0x04, 0x00, 0x08, 0x64])); // Test frame
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Step 1: Send ToRadio.startConfig protobuf (this is what triggers binary mode)
+            addLog('info', '📤 Sending ToRadio.startConfig to trigger binary mode...');
             
-            // Force API mode with aggressive sequence
-            await writer.write(new TextEncoder().encode('\x03\x03\x03')); // Triple Ctrl+C
-            await new Promise(resolve => setTimeout(resolve, 200));
-            await writer.write(new TextEncoder().encode('api\r\n'));
-            await new Promise(resolve => setTimeout(resolve, 200));
-            await writer.write(new Uint8Array([0x00, 0x00])); // Null bytes
+            // Create ToRadio protobuf with startConfig
+            // According to docs: "Write a ToRadio.startConfig protobuf to the ToRadio endpoint"
+            const toRadioConfig = new Uint8Array([
+              0x08, 0x01  // startConfig = 1 in protobuf format
+            ]);
             
-            addLog('info', '✅ Binary mode triggers sent');
+            // Frame it with official 4-byte header: START1(0x94) + START2(0xc3) + MSB_LEN + LSB_LEN
+            const framedPacket = new Uint8Array(4 + toRadioConfig.length);
+            framedPacket[0] = 0x94;  // START1
+            framedPacket[1] = 0xc3;  // START2  
+            framedPacket[2] = (toRadioConfig.length >> 8) & 0xff;  // MSB of length
+            framedPacket[3] = toRadioConfig.length & 0xff;  // LSB of length
+            framedPacket.set(toRadioConfig, 4);  // Payload
+            
+            await writer.write(framedPacket);
+            addLog('info', `✅ Sent ToRadio.startConfig (${framedPacket.length} bytes)`);
+            
+            // According to docs: device should now switch to binary mode and send configuration
+            addLog('info', '⏳ Device should now switch to binary protobuf mode...');
+            
           } finally {
             writer.releaseLock();
           }
         }
         
-        // Try config request after API mode switch
-        setTimeout(async () => {
-          if (protocol && protocolInitialized && selectedPort.writable) {
-            addLog('info', '✅ Attempting config request after API mode switch');
-            await sendConfigurationRequest(selectedPort);
-          } else {
-            addLog('info', '⚠️ Device may still be in console mode - use manual buttons if needed');
-          }
+        // Wait for device to respond with configuration data
+        setTimeout(() => {
+          addLog('info', '📡 Listening for configuration response from device...');
+          addLog('info', '💡 If still seeing console output, device may need manual configuration');
         }, 2000);
         
-      }, 500); // Start very quickly after connection
+      }, 1000); // Wait 1 second after connection established
 
     } catch (error: any) {
       console.error('Serial connection error:', error);
@@ -598,10 +604,7 @@ export default function NodesControl() {
       .map(b => b.toString(2).padStart(8, '0'))
       .join(' ');
     
-    addLog('data', `📥 Received ${data.length} bytes`);
-    addLog('data', `HEX: ${hexData}${data.length > 32 ? '...' : ''}`);
-    addLog('data', `TXT: "${textData}"${data.length > 32 ? '...' : ''}`);
-    addLog('data', `BIN: ${binaryData}${data.length > 8 ? '...' : ''}`);
+    addLog('data', `📥 Received ${data.length} bytes: "${textData}"${data.length > 32 ? '...' : ''}`);
     
     // Check if device is in console/debug mode (ASCII text output)
     const isConsoleOutput = data.every(b => (b >= 32 && b <= 126) || b === 0x1b || b === 0x0d || b === 0x0a);
