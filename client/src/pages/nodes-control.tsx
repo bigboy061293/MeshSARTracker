@@ -219,31 +219,47 @@ export default function NodesControl() {
       const writer = port.writable.getWriter();
       
       try {
-        // More aggressive approach to exit console mode and enter API mode
+        // Ultra-aggressive approach to force device out of console debug mode
         const commands = [
-          '\x03\x03\x03',   // Triple Ctrl+C to break any running command
-          '\r\n',           // Send newline to clear any partial commands
-          'exit\r\n',       // Try to exit current mode
-          '\x04',           // Ctrl+D to exit
-          '\r\n',           // Clear line again
-          'api\r\n',        // Switch to API mode
-          '++',             // Hayes command escape sequence (some devices use this)
-          '\r\n',           // Clear line
-          '\x1b',           // ESC key
-          '\r\n',           // Final clear
+          '\x03\x03\x03\x03', // Quadruple Ctrl+C to break any running process
+          '\r\n',             // Send newline to clear any partial commands
+          'reset\r\n',        // Hardware reset attempt
+          '\x1A',             // Ctrl+Z (suspend)
+          '\r\n',             // Clear line
+          'exit\r\n',         // Try to exit current mode
+          'quit\r\n',         // Alternative exit command
+          '\x04\x04',         // Double Ctrl+D to force exit
+          '\r\n',             // Clear line again
+          'api\r\n',          // Switch to API mode
+          'meshtastic --set device.serialConsole false\r\n', // Disable serial console
+          '+++',              // Hayes command escape sequence (longer version)
+          '\r\n',             // Clear line
+          'AT\r\n',           // AT command (some devices respond to this)
+          'AT+API\r\n',       // Force API mode with AT command
+          '\x1b\x1b',         // Double ESC key
+          '\r\n',             // Clear line
+          '\x00\x00',         // Null bytes to trigger binary mode detection
+          '\r\n',             // Final clear
         ];
         
         for (const command of commands) {
           const commandBytes = new TextEncoder().encode(command);
-          const displayCmd = command === '\x03\x03\x03' ? 'Triple Ctrl+C' : 
+          const displayCmd = command === '\x03\x03\x03\x03' ? 'Quadruple Ctrl+C' :
+                           command === '\x03\x03\x03' ? 'Triple Ctrl+C' : 
                            command === '\x03' ? 'Ctrl+C' : 
+                           command === '\x04\x04' ? 'Double Ctrl+D' :
                            command === '\x04' ? 'Ctrl+D' : 
+                           command === '\x1A' ? 'Ctrl+Z (Suspend)' :
+                           command === '\x1b\x1b' ? 'Double ESC' :
                            command === '\x1b' ? 'ESC' :
-                           command === '++' ? 'Hayes Escape' : 
+                           command === '\x00\x00' ? 'Null Bytes (Binary Mode)' :
+                           command === '+++' ? 'Hayes Escape Sequence' :
+                           command.includes('meshtastic') ? 'Disable Serial Console' :
+                           command.includes('AT') ? 'AT Command' :
                            command.replace(/\r\n/g, '\\r\\n');
           addLog('info', `📤 Sending command: ${displayCmd}`);
           await writer.write(commandBytes);
-          await new Promise(resolve => setTimeout(resolve, 300)); // Shorter delay for more commands
+          await new Promise(resolve => setTimeout(resolve, 250)); // Slightly faster sequence
         }
         
         // Wait a bit then try to send a test protobuf frame
@@ -271,13 +287,16 @@ export default function NodesControl() {
   };
 
   // Send configuration request to establish connection (like phone app does)
-  const sendConfigurationRequest = async () => {
-    if (!port) {
+  const sendConfigurationRequest = async (targetPort?: SerialPort) => {
+    const activePort = targetPort || port;
+    
+    if (!activePort) {
       addLog('error', 'Cannot send config request - no port available');
+      addLog('info', '💡 Make sure the device is connected first');
       return;
     }
 
-    if (!port.writable) {
+    if (!activePort.writable) {
       addLog('error', 'Cannot send config request - port not writable (may be in read-only mode)');
       addLog('info', '💡 Port may need time to initialize or device may be in console mode');
       return;
@@ -292,7 +311,7 @@ export default function NodesControl() {
     try {
       addLog('info', '🔧 Sending configuration request to establish connection...');
       
-      const writer = port.writable.getWriter();
+      const writer = activePort.writable.getWriter();
       
       try {
         // Create wantConfig request (equivalent to "Client wants config, nonce=8")
@@ -410,14 +429,14 @@ export default function NodesControl() {
       setTimeout(async () => {
         if (protocol && protocolInitialized && selectedPort.writable) {
           addLog('info', '✅ Port is writable and protocol ready - sending config request');
-          await sendConfigurationRequest();
+          await sendConfigurationRequest(selectedPort);
         } else {
           addLog('info', `⏳ Waiting for initialization - Protocol: ${protocolInitialized ? 'Ready' : 'Not Ready'}, Port Writable: ${selectedPort.writable ? 'Yes' : 'No'}`);
           // Try again after another second
           setTimeout(async () => {
             if (protocol && protocolInitialized && selectedPort.writable) {
               addLog('info', '✅ Second attempt - sending config request');
-              await sendConfigurationRequest();
+              await sendConfigurationRequest(selectedPort);
             } else {
               addLog('info', '💡 Config request skipped - will be sent manually if needed');
             }
@@ -1129,7 +1148,7 @@ export default function NodesControl() {
                     {nodeDbMutation.isPending ? 'Reading...' : 'Read NodeDB'}
                   </Button>
                   <Button 
-                    onClick={sendConfigurationRequest}
+                    onClick={() => sendConfigurationRequest()}
                     variant="outline"
                     className="flex items-center gap-2"
                   >
