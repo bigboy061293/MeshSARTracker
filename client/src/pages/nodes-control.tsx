@@ -914,10 +914,10 @@ export default function NodesControl() {
         const nodeInfoRequest = protocol.createNodeInfoRequest(Date.now() % 65536);
         const framedRequest = protocol.frameData(nodeInfoRequest);
         
-        addLog('info', `📤 Sending protobuf MyNodeInfo request (${framedRequest.length} bytes)`);
+        addLog('info', `📤 Sending want_config_id request for node owner info (${framedRequest.length} bytes)`);
         await writer.write(framedRequest);
         
-        addLog('info', '⏳ Waiting for protobuf responses (5 seconds)...');
+        addLog('info', '⏳ Waiting for configuration/owner info responses (5 seconds)...');
         
         // Wait for responses to be processed by the protobuf handler
         await new Promise(resolve => setTimeout(resolve, 5000));

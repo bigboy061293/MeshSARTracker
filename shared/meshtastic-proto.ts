@@ -403,39 +403,11 @@ export class MeshtasticProtocol {
     if (!this.root) throw new Error('Protocol not initialized');
 
     const ToRadio = this.root.lookupType('meshtastic.ToRadio');
-    const MeshPacket = this.root.lookupType('meshtastic.MeshPacket');
-    const Data = this.root.lookupType('meshtastic.Data');
-    const AdminMessage = this.root.lookupType('meshtastic.AdminMessage');
 
-    // Create admin message to get owner info
-    const adminMsg = AdminMessage.create({
-      getOwnerRequest: true
-    });
-
-    const adminPayload = AdminMessage.encode(adminMsg).finish();
-
-    // Create data packet
-    const dataPacket = Data.create({
-      portnum: 6, // ADMIN_APP
-      payload: adminPayload,
-      wantResponse: true,
-      requestId: requestId
-    });
-
-    const dataPayload = Data.encode(dataPacket).finish();
-
-    // Create mesh packet
-    const meshPacket = MeshPacket.create({
-      to: 0xFFFFFFFF, // Broadcast to get local node info
-      payloadVariant: dataPayload,
-      id: requestId,
-      wantAck: false,
-      hopLimit: 3
-    });
-
-    // Create ToRadio message
+    // Use the official want_config_id request to get device configuration
+    // This is the proper way to request node owner information
     const toRadio = ToRadio.create({
-      packet: meshPacket
+      wantConfigId: true
     });
 
     return ToRadio.encode(toRadio).finish();
