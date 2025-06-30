@@ -516,6 +516,14 @@ export default function NodesControl() {
   let bufferTimeout: NodeJS.Timeout | null = null;
 
   const accumulateSerialData = (newData: Uint8Array) => {
+    // Debug: Check if fragmentation happens at space characters (0x20)
+    const hexData = Array.from(newData).map(b => b.toString(16).padStart(2, '0')).join(' ');
+    const hasSpaces = newData.includes(0x20);
+    
+    if (newData.length === 1) {
+      addLog('debug', `Fragment: 1 byte [${hexData}] ${hasSpaces ? '(contains space 0x20)' : ''}`);
+    }
+
     // Accumulate data into buffer
     const combinedBuffer = new Uint8Array(serialDataBuffer.length + newData.length);
     combinedBuffer.set(serialDataBuffer, 0);
@@ -527,15 +535,25 @@ export default function NodesControl() {
       clearTimeout(bufferTimeout);
     }
 
-    // Set timeout to process accumulated data after a brief pause
-    bufferTimeout = setTimeout(() => {
-      if (serialDataBuffer.length > 0) {
-        // Process the accumulated data
-        processReceivedData(serialDataBuffer);
-        // Clear the buffer
-        serialDataBuffer = new Uint8Array(0);
-      }
-    }, 100); // Wait 100ms for more data to accumulate
+    // HYPOTHESIS TEST: Check if device is splitting at space characters
+    // Look for complete logical chunks ending with \r\n instead of arbitrary timeouts
+    const endsWithNewline = serialDataBuffer.length >= 2 && 
+                           serialDataBuffer[serialDataBuffer.length - 2] === 0x0d && 
+                           serialDataBuffer[serialDataBuffer.length - 1] === 0x0a;
+
+    if (endsWithNewline) {
+      // Process immediately when we have a complete line
+      processReceivedData(serialDataBuffer);
+      serialDataBuffer = new Uint8Array(0);
+    } else {
+      // Set shorter timeout for space-based fragmentation
+      bufferTimeout = setTimeout(() => {
+        if (serialDataBuffer.length > 0) {
+          processReceivedData(serialDataBuffer);
+          serialDataBuffer = new Uint8Array(0);
+        }
+      }, 20); // Much shorter timeout for space-based splits
+    }
   };
 
   const startReading = async (serialPort: SerialPort) => {
