@@ -330,12 +330,36 @@ export default function NodesControl() {
   };
 
   const processReceivedData = (data: Uint8Array) => {
-    // Log hex data for debugging (first 16 bytes)
-    const hexData = Array.from(data.slice(0, 16))
+    // Enhanced debugging - show both hex and text interpretation
+    const hexData = Array.from(data.slice(0, 32))
       .map(b => b.toString(16).padStart(2, '0'))
       .join(' ');
     
-    addLog('data', `📥 Received ${data.length} bytes: ${hexData}${data.length > 16 ? '...' : ''}`);
+    // Convert bytes to readable text (printable ASCII characters)
+    const textData = Array.from(data.slice(0, 32))
+      .map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.')
+      .join('');
+    
+    // Convert bytes to binary for protocol analysis
+    const binaryData = Array.from(data.slice(0, 8))
+      .map(b => b.toString(2).padStart(8, '0'))
+      .join(' ');
+    
+    addLog('data', `📥 Received ${data.length} bytes`);
+    addLog('data', `HEX: ${hexData}${data.length > 32 ? '...' : ''}`);
+    addLog('data', `TXT: "${textData}"${data.length > 32 ? '...' : ''}`);
+    addLog('data', `BIN: ${binaryData}${data.length > 8 ? '...' : ''}`);
+    
+    // Check for Meshtastic frame patterns
+    if (data.length >= 4) {
+      if (data[0] === 0x94 && data[1] === 0xc3) {
+        addLog('info', '🔍 Detected Meshtastic frame header: 94 c3');
+        const length = data[2] | (data[3] << 8);
+        addLog('info', `📏 Frame length: ${length} bytes`);
+      } else if (data[0] === 0x94 && data[1] === 0x28) {
+        addLog('info', '🔍 Detected alternative frame header: 94 28');
+      }
+    }
     
     // Process protobuf packets if protocol is initialized
     if (protocol && protocolInitialized) {
@@ -386,30 +410,47 @@ export default function NodesControl() {
   // Handle node info responses from protobuf
   const handleNodeInfoResponse = (nodeInfo: any) => {
     try {
+      addLog('info', '🔍 Processing node info response...');
+      addLog('data', `Raw nodeInfo object: ${JSON.stringify(nodeInfo, null, 2)}`);
+      
       const convertedInfo = protocol?.convertNodeInfo(nodeInfo);
       if (convertedInfo) {
+        addLog('data', `Converted info: ${JSON.stringify(convertedInfo, null, 2)}`);
+        
         const realNodeId = convertedInfo.nodeInfo.nodeId;
         addLog('info', `📱 Node Info: ${convertedInfo.nodeInfo.longName} (${convertedInfo.nodeInfo.hwModel})`);
-        addLog('info', `🔑 Real node ID: ${realNodeId}`);
+        addLog('info', `🔑 Extracted node ID: "${realNodeId}" (length: ${realNodeId?.length})`);
         
-        // Update the connected node ID with the real one from the device
-        if (realNodeId && realNodeId !== connectedNodeId) {
-          setConnectedNodeId(realNodeId);
-          addLog('info', `✅ Updated node ID from ${connectedNodeId} to ${realNodeId}`);
+        // Debug node ID format
+        if (realNodeId) {
+          const isValidFormat = realNodeId.startsWith('!') && realNodeId.length === 9;
+          addLog('info', `🔍 Node ID format check: ${isValidFormat ? 'VALID' : 'INVALID'} (expected: !xxxxxxxx)`);
+          
+          if (realNodeId !== connectedNodeId) {
+            setConnectedNodeId(realNodeId);
+            addLog('info', `✅ Updated node ID from "${connectedNodeId}" to "${realNodeId}"`);
+          } else {
+            addLog('info', `ℹ️ Node ID unchanged: "${realNodeId}"`);
+          }
+        } else {
+          addLog('error', '❌ No node ID found in response');
         }
         
         // Store the node info
         nodeInfoMutation.mutate({
-          nodeId: realNodeId,
+          nodeId: realNodeId || 'unknown',
           dataType: 'node_info',
           rawData: nodeInfo,
           parsedData: convertedInfo,
           dataSize: JSON.stringify(nodeInfo).length,
           recordCount: 1
         });
+      } else {
+        addLog('error', '❌ Failed to convert node info - protocol.convertNodeInfo returned null');
       }
     } catch (error) {
       addLog('error', `❌ Failed to process node info: ${error}`);
+      console.error('Node info processing error:', error);
     }
   };
 
