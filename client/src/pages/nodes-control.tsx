@@ -565,9 +565,9 @@ export default function NodesControl() {
       addLog('info', '🔄 Cleared console buffer - receiving binary data');
     }
     
-    // Check for Meshtastic frame patterns
+    // Check for official Meshtastic frame patterns
     if (data.length >= 2) {
-      if (data[0] === 0x94 && (data[1] === 0xc3 || data[1] === 0x28)) {
+      if (data[0] === 0x94 && data[1] === 0xc3) {
         addLog('info', `🔍 Detected Meshtastic frame header: ${data[0].toString(16)} ${data[1].toString(16)}`);
         if (data.length >= 4) {
           const length = data[2] | (data[3] << 8);

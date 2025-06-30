@@ -493,7 +493,7 @@ export class MeshtasticProtocol {
 
   // Frame data with Meshtastic header
   public frameData(payload: Uint8Array): Uint8Array {
-    const header = new Uint8Array([0x94, 0x28]); // Meshtastic magic bytes
+    const header = new Uint8Array([0x94, 0xc3]); // Official Meshtastic magic bytes
     const length = new Uint8Array(2);
     length[0] = payload.length & 0xFF;
     length[1] = (payload.length >> 8) & 0xFF;
@@ -512,8 +512,8 @@ export class MeshtasticProtocol {
     let offset = 0;
 
     while (offset < buffer.length - 3) {
-      // Look for magic bytes
-      if (buffer[offset] === 0x94 && buffer[offset + 1] === 0x28) {
+      // Look for official Meshtastic magic bytes
+      if (buffer[offset] === 0x94 && buffer[offset + 1] === 0xc3) {
         const length = buffer[offset + 2] | (buffer[offset + 3] << 8);
         
         if (offset + 4 + length <= buffer.length) {
